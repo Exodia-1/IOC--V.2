@@ -586,7 +586,7 @@ async def query_malwarebazaar(session: aiohttp.ClientSession, ioc: str, ioc_type
         return VendorResult(vendor='MalwareBazaar', status='error', error=str(e))
 
 async def query_whois(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
-    """Query WHOIS data via ip-api.com"""
+    """Query WHOIS data"""
     try:
         if category not in ['ip', 'domain', 'email']:
             return VendorResult(vendor='WHOIS', status='unsupported', error='Only IPs, domains and emails supported')
@@ -625,23 +625,50 @@ async def query_whois(session: aiohttp.ClientSession, ioc: str, ioc_type: str, c
                 else:
                     return VendorResult(vendor='WHOIS', status='error', error=f'HTTP {response.status}')
         else:
-            async with session.get(f'https://whois.freeaiapi.xyz/?name={lookup_target}') as response:
-                if response.status == 200:
-                    data = await response.json()
-                    result_data = {
-                        'raw_response': data,
-                        'domain': data.get('domain_name'),
-                        'registrar': data.get('registrar'),
-                        'creation_date': data.get('creation_date'),
-                        'expiration_date': data.get('expiration_date'),
-                        'updated_date': data.get('updated_date'),
-                        'name_servers': data.get('name_servers', []),
-                        'status': data.get('status', []),
-                        'dnssec': data.get('dnssec')
-                    }
-                    return VendorResult(vendor='WHOIS', status='success', data=result_data)
-                else:
-                    return VendorResult(vendor='WHOIS', status='error', error=f'HTTP {response.status}')
+            # Use python-whois for domain lookups
+            try:
+                import asyncio
+                loop = asyncio.get_event_loop()
+                w = await loop.run_in_executor(None, whois.whois, lookup_target)
+                
+                # Format dates properly
+                creation_date = w.creation_date
+                expiration_date = w.expiration_date
+                updated_date = w.updated_date
+                
+                # Handle list of dates (some registrars return multiple)
+                if isinstance(creation_date, list):
+                    creation_date = creation_date[0]
+                if isinstance(expiration_date, list):
+                    expiration_date = expiration_date[0]
+                if isinstance(updated_date, list):
+                    updated_date = updated_date[0]
+                
+                # Format to string
+                creation_str = creation_date.strftime('%Y-%m-%d') if creation_date else None
+                expiration_str = expiration_date.strftime('%Y-%m-%d') if expiration_date else None
+                updated_str = updated_date.strftime('%Y-%m-%d') if updated_date else None
+                
+                name_servers = w.name_servers or []
+                if isinstance(name_servers, str):
+                    name_servers = [name_servers]
+                name_servers = [ns.lower() for ns in name_servers] if name_servers else []
+                
+                result_data = {
+                    'domain': w.domain_name[0] if isinstance(w.domain_name, list) else w.domain_name,
+                    'registrar': w.registrar,
+                    'creation_date': creation_str,
+                    'expiration_date': expiration_str,
+                    'updated_date': updated_str,
+                    'name_servers': list(set(name_servers))[:6],
+                    'status': w.status if isinstance(w.status, list) else [w.status] if w.status else [],
+                    'dnssec': w.dnssec,
+                    'registrant_country': w.get('registrant_country') or w.get('country')
+                }
+                return VendorResult(vendor='WHOIS', status='success', data=result_data)
+            except Exception as e:
+                logger.error(f"WHOIS domain lookup error: {str(e)}")
+                return VendorResult(vendor='WHOIS', status='error', error=str(e))
     except Exception as e:
         logger.error(f"WHOIS error: {str(e)}")
         return VendorResult(vendor='WHOIS', status='error', error=str(e))
