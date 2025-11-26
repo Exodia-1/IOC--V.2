@@ -451,7 +451,11 @@ async def root():
 async def detect_ioc(request: IOCRequest):
     """Detect IOC type without querying threat intelligence"""
     ioc = request.ioc.strip()
+    if not ioc:
+        raise HTTPException(status_code=400, detail="IOC cannot be empty")
     ioc_type, category = detect_ioc_type(ioc)
+    if category == 'unknown':
+        raise HTTPException(status_code=400, detail=f"Unable to determine IOC type for: {ioc}")
     return IOCDetection(ioc=ioc, ioc_type=ioc_type, category=category)
 
 @api_router.post("/analyze", response_model=IOCAnalysisResult)
