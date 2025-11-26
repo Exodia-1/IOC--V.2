@@ -33,7 +33,11 @@ import {
   Tag,
   FileWarning,
   ChevronRight,
-  Zap
+  Zap,
+  Radio,
+  Bug,
+  Network,
+  Eye
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -96,24 +100,37 @@ const VendorCard = ({ result }) => {
     
     switch (vendor) {
       case 'VirusTotal':
+        const total = data.total_engines || 0;
         return (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-800/50 rounded-lg p-3">
                 <p className="text-xs text-slate-400 mb-1">Malicious</p>
-                <p className="text-2xl font-bold text-red-400">{data.malicious_count || 0}</p>
+                <p className="text-2xl font-bold text-red-400">
+                  {data.malicious_count || 0}
+                  <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                </p>
               </div>
               <div className="bg-slate-800/50 rounded-lg p-3">
                 <p className="text-xs text-slate-400 mb-1">Suspicious</p>
-                <p className="text-2xl font-bold text-amber-400">{data.suspicious_count || 0}</p>
+                <p className="text-2xl font-bold text-amber-400">
+                  {data.suspicious_count || 0}
+                  <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                </p>
               </div>
               <div className="bg-slate-800/50 rounded-lg p-3">
                 <p className="text-xs text-slate-400 mb-1">Harmless</p>
-                <p className="text-2xl font-bold text-emerald-400">{data.harmless_count || 0}</p>
+                <p className="text-2xl font-bold text-emerald-400">
+                  {data.harmless_count || 0}
+                  <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                </p>
               </div>
               <div className="bg-slate-800/50 rounded-lg p-3">
                 <p className="text-xs text-slate-400 mb-1">Undetected</p>
-                <p className="text-2xl font-bold text-slate-400">{data.undetected_count || 0}</p>
+                <p className="text-2xl font-bold text-slate-400">
+                  {data.undetected_count || 0}
+                  <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                </p>
               </div>
             </div>
             {data.country && (
@@ -278,6 +295,197 @@ const VendorCard = ({ result }) => {
             )}
           </div>
         );
+      
+      case 'Shodan':
+        return (
+          <div className="space-y-3">
+            {data.ports && data.ports.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 mb-2">Open Ports ({data.ports.length})</p>
+                <div className="flex flex-wrap gap-1">
+                  {data.ports.slice(0, 12).map((port, idx) => (
+                    <Badge key={idx} variant="outline" className="bg-slate-700/50 text-slate-300 text-xs">
+                      {port}
+                    </Badge>
+                  ))}
+                  {data.ports.length > 12 && (
+                    <Badge variant="outline" className="bg-slate-700/50 text-slate-400 text-xs">
+                      +{data.ports.length - 12} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+            {data.vulns && data.vulns.length > 0 && (
+              <div>
+                <p className="text-xs text-red-400 mb-2">Vulnerabilities ({data.vulns.length})</p>
+                <div className="flex flex-wrap gap-1">
+                  {data.vulns.slice(0, 5).map((vuln, idx) => (
+                    <Badge key={idx} variant="outline" className="bg-red-500/20 text-red-400 text-xs">
+                      {vuln}
+                    </Badge>
+                  ))}
+                  {data.vulns.length > 5 && (
+                    <Badge variant="outline" className="bg-red-500/20 text-red-400 text-xs">
+                      +{data.vulns.length - 5} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+            {data.hostnames && data.hostnames.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Globe className="w-4 h-4 text-slate-400" />
+                <span className="truncate">{data.hostnames[0]}</span>
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'IPInfo':
+        return (
+          <div className="space-y-3">
+            {data.city && data.country && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <MapPin className="w-4 h-4 text-slate-400" />
+                <span>{data.city}, {data.region}, {data.country}</span>
+              </div>
+            )}
+            {data.org && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Building className="w-4 h-4 text-slate-400" />
+                <span>{data.org}</span>
+              </div>
+            )}
+            {data.hostname && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Globe className="w-4 h-4 text-slate-400" />
+                <span>{data.hostname}</span>
+              </div>
+            )}
+            {data.timezone && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span>{data.timezone}</span>
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'ThreatFox':
+        return (
+          <div className="space-y-3">
+            {data.found && data.iocs && data.iocs.length > 0 ? (
+              <>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-xs text-red-400 mb-1">Threat Detected</p>
+                  <p className="text-lg font-bold text-red-400">
+                    {data.iocs[0].malware_printable || data.iocs[0].malware || 'Unknown Malware'}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-slate-800/50 rounded p-2">
+                    <p className="text-xs text-slate-400">Threat Type</p>
+                    <p className="text-sm text-slate-200">{data.iocs[0].threat_type || 'N/A'}</p>
+                  </div>
+                  <div className="bg-slate-800/50 rounded p-2">
+                    <p className="text-xs text-slate-400">Confidence</p>
+                    <p className="text-sm text-slate-200">{data.iocs[0].confidence_level || 'N/A'}%</p>
+                  </div>
+                </div>
+                {data.iocs[0].tags && data.iocs[0].tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {data.iocs[0].tags.map((tag, idx) => (
+                      <Badge key={idx} variant="outline" className="bg-red-500/20 text-red-400 text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-emerald-400">No threats found in ThreatFox database</p>
+            )}
+          </div>
+        );
+      
+      case 'MalwareBazaar':
+        return (
+          <div className="space-y-3">
+            {data.found ? (
+              <>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-xs text-red-400 mb-1">Known Malware</p>
+                  <p className="text-lg font-bold text-red-400">
+                    {data.signature || 'Unknown Signature'}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-slate-800/50 rounded p-2">
+                    <p className="text-xs text-slate-400">File Type</p>
+                    <p className="text-sm text-slate-200">{data.file_type || 'N/A'}</p>
+                  </div>
+                  <div className="bg-slate-800/50 rounded p-2">
+                    <p className="text-xs text-slate-400">File Size</p>
+                    <p className="text-sm text-slate-200">{data.file_size ? `${Math.round(data.file_size / 1024)} KB` : 'N/A'}</p>
+                  </div>
+                </div>
+                {data.tags && data.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {data.tags.map((tag, idx) => (
+                      <Badge key={idx} variant="outline" className="bg-red-500/20 text-red-400 text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-emerald-400">Hash not found in MalwareBazaar</p>
+            )}
+          </div>
+        );
+      
+      case 'WHOIS':
+        return (
+          <div className="space-y-3">
+            {data.country && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <MapPin className="w-4 h-4 text-slate-400" />
+                <span>{data.city ? `${data.city}, ` : ''}{data.country}</span>
+              </div>
+            )}
+            {data.isp && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Building className="w-4 h-4 text-slate-400" />
+                <span>{data.isp}</span>
+              </div>
+            )}
+            {data.org && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Network className="w-4 h-4 text-slate-400" />
+                <span>{data.org}</span>
+              </div>
+            )}
+            {data.as && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Server className="w-4 h-4 text-slate-400" />
+                <span>{data.as}</span>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {data.proxy && <Badge variant="outline" className="bg-amber-500/20 text-amber-400">Proxy</Badge>}
+              {data.hosting && <Badge variant="outline" className="bg-cyan-500/20 text-cyan-400">Hosting</Badge>}
+              {data.mobile && <Badge variant="outline" className="bg-purple-500/20 text-purple-400">Mobile</Badge>}
+            </div>
+            {data.registrar && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Building className="w-4 h-4 text-slate-400" />
+                <span>Registrar: {data.registrar}</span>
+              </div>
+            )}
+          </div>
+        );
         
       default:
         return <pre className="text-xs text-slate-400 overflow-auto">{JSON.stringify(data, null, 2)}</pre>;
@@ -370,6 +578,34 @@ const AnalysisResults = ({ result }) => {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+          
+          {/* Open Ports */}
+          {summary.open_ports && summary.open_ports.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Open Ports</p>
+              <div className="flex flex-wrap gap-1">
+                {summary.open_ports.slice(0, 20).map((port, idx) => (
+                  <Badge key={idx} variant="outline" className="bg-slate-700/50 text-slate-300 text-xs">
+                    {port}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Vulnerabilities */}
+          {summary.vulnerabilities && summary.vulnerabilities.length > 0 && (
+            <div>
+              <p className="text-xs text-red-400 uppercase tracking-wider mb-2">Known Vulnerabilities</p>
+              <div className="flex flex-wrap gap-1">
+                {summary.vulnerabilities.slice(0, 10).map((vuln, idx) => (
+                  <Badge key={idx} variant="outline" className="bg-red-500/20 text-red-400 text-xs">
+                    {vuln}
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
           
@@ -479,7 +715,6 @@ const SOCDashboard = () => {
     const value = e.target.value;
     setIocInput(value);
     
-    // Debounce detection
     const timer = setTimeout(() => detectIOC(value), 300);
     return () => clearTimeout(timer);
   };
@@ -719,7 +954,7 @@ const SOCDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <p>SOC IOC Analyzer v1.0</p>
-            <p>Powered by VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, GreyNoise</p>
+            <p>Powered by VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, GreyNoise, Shodan, ThreatFox, MalwareBazaar</p>
           </div>
         </div>
       </footer>

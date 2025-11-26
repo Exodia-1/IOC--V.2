@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 import re
 import aiohttp
 import asyncio
-import hashlib
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -28,6 +27,7 @@ VIRUSTOTAL_API_KEY = os.environ.get('VIRUSTOTAL_API_KEY', '')
 URLSCAN_API_KEY = os.environ.get('URLSCAN_API_KEY', '')
 ALIENVAULT_API_KEY = os.environ.get('ALIENVAULT_API_KEY', '')
 GREYNOISE_API_KEY = os.environ.get('GREYNOISE_API_KEY', '')
+SHODAN_API_KEY = os.environ.get('SHODAN_API_KEY', '')
 
 # Create the main app
 app = FastAPI(title="SOC IOC Analysis Tool")
@@ -86,29 +86,20 @@ def detect_ioc_type(ioc: str) -> tuple:
     """Detect the type of IOC and return (type, category)"""
     ioc = ioc.strip()
     
-    # Check for file hashes first
     if re.match(IOC_PATTERNS['md5'], ioc):
         return 'md5', 'hash'
     if re.match(IOC_PATTERNS['sha1'], ioc):
         return 'sha1', 'hash'
     if re.match(IOC_PATTERNS['sha256'], ioc):
         return 'sha256', 'hash'
-    
-    # Check for IP addresses
     if re.match(IOC_PATTERNS['ipv4'], ioc):
         return 'ipv4', 'ip'
     if re.match(IOC_PATTERNS['ipv6'], ioc):
         return 'ipv6', 'ip'
-    
-    # Check for email
     if re.match(IOC_PATTERNS['email'], ioc):
         return 'email', 'email'
-    
-    # Check for URL
     if re.match(IOC_PATTERNS['url'], ioc):
         return 'url', 'url'
-    
-    # Check for domain
     if re.match(IOC_PATTERNS['domain'], ioc):
         return 'domain', 'domain'
     
@@ -125,7 +116,6 @@ async def query_virustotal(session: aiohttp.ClientSession, ioc: str, ioc_type: s
         elif category == 'domain':
             url = f'https://www.virustotal.com/api/v3/domains/{ioc}'
         elif category == 'url':
-            # URL needs to be base64 encoded
             import base64
             url_id = base64.urlsafe_b64encode(ioc.encode()).decode().strip('=')
             url = f'https://www.virustotal.com/api/v3/urls/{url_id}'
@@ -138,18 +128,29 @@ async def query_virustotal(session: aiohttp.ClientSession, ioc: str, ioc_type: s
             if response.status == 200:
                 data = await response.json()
                 attrs = data.get('data', {}).get('attributes', {})
+                stats = attrs.get('last_analysis_stats', {})
+                
+                # Calculate total engines
+                total_engines = sum([
+                    stats.get('malicious', 0),
+                    stats.get('suspicious', 0),
+                    stats.get('harmless', 0),
+                    stats.get('undetected', 0),
+                    stats.get('timeout', 0)
+                ])
                 
                 result_data = {
                     'raw_response': data,
                     'reputation': attrs.get('reputation'),
-                    'last_analysis_stats': attrs.get('last_analysis_stats', {}),
+                    'last_analysis_stats': stats,
                     'last_analysis_date': attrs.get('last_analysis_date'),
                     'country': attrs.get('country'),
                     'as_owner': attrs.get('as_owner'),
-                    'malicious_count': attrs.get('last_analysis_stats', {}).get('malicious', 0),
-                    'suspicious_count': attrs.get('last_analysis_stats', {}).get('suspicious', 0),
-                    'harmless_count': attrs.get('last_analysis_stats', {}).get('harmless', 0),
-                    'undetected_count': attrs.get('last_analysis_stats', {}).get('undetected', 0)
+                    'malicious_count': stats.get('malicious', 0),
+                    'suspicious_count': stats.get('suspicious', 0),
+                    'harmless_count': stats.get('harmless', 0),
+                    'undetected_count': stats.get('undetected', 0),
+                    'total_engines': total_engines
                 }
                 
                 return VendorResult(vendor='VirusTotal', status='success', data=result_data)
@@ -211,7 +212,6 @@ async def query_urlscan(session: aiohttp.ClientSession, ioc: str, ioc_type: str,
         
         headers = {'API-Key': URLSCAN_API_KEY}
         
-        # Search for existing scans
         if category == 'url':
             search_query = f'page.url:"{ioc}"'
         elif category == 'domain':
@@ -328,6 +328,202 @@ async def query_greynoise(session: aiohttp.ClientSession, ioc: str, ioc_type: st
         logger.error(f"GreyNoise error: {str(e)}")
         return VendorResult(vendor='GreyNoise', status='error', error=str(e))
 
+async def query_ipinfo(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
+    """Query IPInfo.io API (free tier)"""
+    try:
+        if category != 'ip':
+            return VendorResult(vendor='IPInfo', status='unsupported', error='Only IP addresses supported')
+        
+        async with session.get(f'https://ipinfo.io/{ioc}/json') as response:
+            if response.status == 200:
+                data = await response.json()
+                
+                result_data = {
+                    'raw_response': data,
+                    'ip': data.get('ip'),
+                    'hostname': data.get('hostname'),
+                    'city': data.get('city'),
+                    'region': data.get('region'),
+                    'country': data.get('country'),
+                    'location': data.get('loc'),
+                    'org': data.get('org'),
+                    'postal': data.get('postal'),
+                    'timezone': data.get('timezone')
+                }
+                
+                return VendorResult(vendor='IPInfo', status='success', data=result_data)
+            else:
+                return VendorResult(vendor='IPInfo', status='error', error=f'HTTP {response.status}')
+    except Exception as e:
+        logger.error(f"IPInfo error: {str(e)}")
+        return VendorResult(vendor='IPInfo', status='error', error=str(e))
+
+async def query_threatfox(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
+    """Query ThreatFox API (abuse.ch)"""
+    try:
+        payload = {'query': 'search_ioc', 'search_term': ioc}
+        
+        async with session.post('https://threatfox-api.abuse.ch/api/v1/', json=payload) as response:
+            if response.status == 200:
+                data = await response.json()
+                
+                if data.get('query_status') == 'ok' and data.get('data'):
+                    ioc_data = data.get('data', [])
+                    result_data = {
+                        'raw_response': data,
+                        'found': True,
+                        'count': len(ioc_data),
+                        'iocs': [{
+                            'id': item.get('id'),
+                            'ioc_type': item.get('ioc_type'),
+                            'threat_type': item.get('threat_type'),
+                            'malware': item.get('malware'),
+                            'malware_printable': item.get('malware_printable'),
+                            'confidence_level': item.get('confidence_level'),
+                            'first_seen': item.get('first_seen'),
+                            'last_seen': item.get('last_seen'),
+                            'reporter': item.get('reporter'),
+                            'tags': item.get('tags', [])
+                        } for item in ioc_data[:5]]
+                    }
+                    return VendorResult(vendor='ThreatFox', status='success', data=result_data)
+                else:
+                    return VendorResult(vendor='ThreatFox', status='not_found', data={'message': 'No threat data found', 'found': False})
+            else:
+                return VendorResult(vendor='ThreatFox', status='error', error=f'HTTP {response.status}')
+    except Exception as e:
+        logger.error(f"ThreatFox error: {str(e)}")
+        return VendorResult(vendor='ThreatFox', status='error', error=str(e))
+
+async def query_malwarebazaar(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
+    """Query MalwareBazaar API (abuse.ch) for file hashes"""
+    try:
+        if category != 'hash':
+            return VendorResult(vendor='MalwareBazaar', status='unsupported', error='Only file hashes supported')
+        
+        payload = {'query': 'get_info', 'hash': ioc}
+        
+        async with session.post('https://mb-api.abuse.ch/api/v1/', data=payload) as response:
+            if response.status == 200:
+                data = await response.json()
+                
+                if data.get('query_status') == 'ok' and data.get('data'):
+                    sample = data.get('data', [{}])[0] if data.get('data') else {}
+                    result_data = {
+                        'raw_response': data,
+                        'found': True,
+                        'sha256_hash': sample.get('sha256_hash'),
+                        'sha1_hash': sample.get('sha1_hash'),
+                        'md5_hash': sample.get('md5_hash'),
+                        'file_type': sample.get('file_type'),
+                        'file_type_mime': sample.get('file_type_mime'),
+                        'file_size': sample.get('file_size'),
+                        'signature': sample.get('signature'),
+                        'first_seen': sample.get('first_seen'),
+                        'last_seen': sample.get('last_seen'),
+                        'intelligence': sample.get('intelligence', {}),
+                        'tags': sample.get('tags', []),
+                        'origin_country': sample.get('origin_country'),
+                        'delivery_method': sample.get('delivery_method')
+                    }
+                    return VendorResult(vendor='MalwareBazaar', status='success', data=result_data)
+                else:
+                    return VendorResult(vendor='MalwareBazaar', status='not_found', data={'message': 'Hash not found in MalwareBazaar', 'found': False})
+            else:
+                return VendorResult(vendor='MalwareBazaar', status='error', error=f'HTTP {response.status}')
+    except Exception as e:
+        logger.error(f"MalwareBazaar error: {str(e)}")
+        return VendorResult(vendor='MalwareBazaar', status='error', error=str(e))
+
+async def query_whois(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
+    """Query WHOIS data via ip-api.com"""
+    try:
+        if category not in ['ip', 'domain']:
+            return VendorResult(vendor='WHOIS', status='unsupported', error='Only IPs and domains supported')
+        
+        # For IP - use ip-api.com
+        if category == 'ip':
+            async with session.get(f'http://ip-api.com/json/{ioc}?fields=66846719') as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data.get('status') == 'success':
+                        result_data = {
+                            'raw_response': data,
+                            'country': data.get('country'),
+                            'country_code': data.get('countryCode'),
+                            'region': data.get('regionName'),
+                            'city': data.get('city'),
+                            'zip': data.get('zip'),
+                            'lat': data.get('lat'),
+                            'lon': data.get('lon'),
+                            'timezone': data.get('timezone'),
+                            'isp': data.get('isp'),
+                            'org': data.get('org'),
+                            'as': data.get('as'),
+                            'as_name': data.get('asname'),
+                            'reverse': data.get('reverse'),
+                            'mobile': data.get('mobile'),
+                            'proxy': data.get('proxy'),
+                            'hosting': data.get('hosting')
+                        }
+                        return VendorResult(vendor='WHOIS', status='success', data=result_data)
+                    else:
+                        return VendorResult(vendor='WHOIS', status='error', error=data.get('message', 'Unknown error'))
+                else:
+                    return VendorResult(vendor='WHOIS', status='error', error=f'HTTP {response.status}')
+        
+        # For domain - use a free WHOIS API
+        else:
+            async with session.get(f'https://whois.freeaiapi.xyz/?name={ioc}') as response:
+                if response.status == 200:
+                    data = await response.json()
+                    result_data = {
+                        'raw_response': data,
+                        'domain': data.get('domain_name'),
+                        'registrar': data.get('registrar'),
+                        'creation_date': data.get('creation_date'),
+                        'expiration_date': data.get('expiration_date'),
+                        'updated_date': data.get('updated_date'),
+                        'name_servers': data.get('name_servers', []),
+                        'status': data.get('status', []),
+                        'dnssec': data.get('dnssec')
+                    }
+                    return VendorResult(vendor='WHOIS', status='success', data=result_data)
+                else:
+                    return VendorResult(vendor='WHOIS', status='error', error=f'HTTP {response.status}')
+    except Exception as e:
+        logger.error(f"WHOIS error: {str(e)}")
+        return VendorResult(vendor='WHOIS', status='error', error=str(e))
+
+async def query_shodan(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
+    """Query Shodan InternetDB (free, no API key required)"""
+    try:
+        if category != 'ip':
+            return VendorResult(vendor='Shodan', status='unsupported', error='Only IP addresses supported')
+        
+        async with session.get(f'https://internetdb.shodan.io/{ioc}') as response:
+            if response.status == 200:
+                data = await response.json()
+                
+                result_data = {
+                    'raw_response': data,
+                    'ip': data.get('ip'),
+                    'ports': data.get('ports', []),
+                    'hostnames': data.get('hostnames', []),
+                    'cpes': data.get('cpes', []),
+                    'tags': data.get('tags', []),
+                    'vulns': data.get('vulns', [])
+                }
+                
+                return VendorResult(vendor='Shodan', status='success', data=result_data)
+            elif response.status == 404:
+                return VendorResult(vendor='Shodan', status='not_found', data={'message': 'IP not found in Shodan'})
+            else:
+                return VendorResult(vendor='Shodan', status='error', error=f'HTTP {response.status}')
+    except Exception as e:
+        logger.error(f"Shodan error: {str(e)}")
+        return VendorResult(vendor='Shodan', status='error', error=str(e))
+
 def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str, category: str) -> Dict[str, Any]:
     """Generate consolidated summary from all vendor results"""
     summary = {
@@ -339,7 +535,9 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
         'key_findings': [],
         'geolocation': {},
         'tags': [],
-        'recommendations': []
+        'recommendations': [],
+        'open_ports': [],
+        'vulnerabilities': []
     }
     
     threat_scores = []
@@ -349,20 +547,19 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
             summary['successful_queries'] += 1
             data = result.data
             
-            # VirusTotal analysis
             if result.vendor == 'VirusTotal':
                 malicious = data.get('malicious_count', 0)
                 suspicious = data.get('suspicious_count', 0)
-                if malicious > 0:
+                total = data.get('total_engines', 0)
+                if malicious > 0 or suspicious > 0:
                     summary['malicious_votes'] += malicious
                     threat_scores.append(min(100, malicious * 10 + suspicious * 5))
-                    summary['key_findings'].append(f"VirusTotal: {malicious} malicious, {suspicious} suspicious detections")
+                    summary['key_findings'].append(f"VirusTotal: {malicious}/{total} malicious, {suspicious}/{total} suspicious")
                 if data.get('country'):
                     summary['geolocation']['country'] = data.get('country')
                 if data.get('as_owner'):
                     summary['geolocation']['as_owner'] = data.get('as_owner')
             
-            # AbuseIPDB analysis
             elif result.vendor == 'AbuseIPDB':
                 abuse_score = data.get('abuse_confidence_score', 0)
                 if abuse_score > 0:
@@ -375,7 +572,6 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
                 if data.get('isp'):
                     summary['geolocation']['isp'] = data.get('isp')
             
-            # GreyNoise analysis
             elif result.vendor == 'GreyNoise':
                 classification = data.get('classification')
                 if classification == 'malicious':
@@ -389,7 +585,6 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
                 if data.get('riot'):
                     summary['tags'].append('RIOT (Common Business Service)')
             
-            # AlienVault OTX analysis
             elif result.vendor == 'AlienVault OTX':
                 pulse_count = data.get('pulse_count', 0)
                 if pulse_count > 0:
@@ -398,7 +593,6 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
                 if data.get('country_code'):
                     summary['geolocation']['country'] = data.get('country_code')
             
-            # URLScan analysis
             elif result.vendor == 'URLScan':
                 latest = data.get('latest_scan', {})
                 verdicts = latest.get('verdicts', {})
@@ -410,6 +604,55 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
                     summary['tags'].extend(overall.get('tags', []))
                 if latest.get('country'):
                     summary['geolocation']['country'] = latest.get('country')
+            
+            elif result.vendor == 'ThreatFox':
+                if data.get('found') and data.get('count', 0) > 0:
+                    threat_scores.append(95)
+                    iocs = data.get('iocs', [])
+                    if iocs:
+                        malware = iocs[0].get('malware_printable', 'Unknown')
+                        summary['key_findings'].append(f"ThreatFox: Associated with {malware}")
+                        for i in iocs:
+                            summary['tags'].extend(i.get('tags', []))
+            
+            elif result.vendor == 'MalwareBazaar':
+                if data.get('found'):
+                    threat_scores.append(100)
+                    signature = data.get('signature', 'Unknown')
+                    summary['key_findings'].append(f"MalwareBazaar: Known malware - {signature}")
+                    summary['tags'].extend(data.get('tags', []))
+            
+            elif result.vendor == 'Shodan':
+                ports = data.get('ports', [])
+                vulns = data.get('vulns', [])
+                if ports:
+                    summary['open_ports'] = ports
+                    summary['key_findings'].append(f"Shodan: {len(ports)} open ports detected")
+                if vulns:
+                    threat_scores.append(min(100, len(vulns) * 20))
+                    summary['vulnerabilities'] = vulns
+                    summary['key_findings'].append(f"Shodan: {len(vulns)} known vulnerabilities")
+                summary['tags'].extend(data.get('tags', []))
+            
+            elif result.vendor == 'IPInfo':
+                if data.get('country'):
+                    summary['geolocation']['country'] = data.get('country')
+                if data.get('city'):
+                    summary['geolocation']['city'] = data.get('city')
+                if data.get('org'):
+                    summary['geolocation']['org'] = data.get('org')
+            
+            elif result.vendor == 'WHOIS':
+                if data.get('proxy'):
+                    summary['tags'].append('Proxy')
+                if data.get('hosting'):
+                    summary['tags'].append('Hosting Provider')
+                if data.get('mobile'):
+                    summary['tags'].append('Mobile Network')
+                if data.get('isp'):
+                    summary['geolocation']['isp'] = data.get('isp')
+                if data.get('country'):
+                    summary['geolocation']['country'] = data.get('country')
     
     # Calculate overall threat level
     if threat_scores:
@@ -437,7 +680,6 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
         else:
             summary['recommendations'].append('Unable to determine threat level - check API connectivity')
     
-    # Remove duplicates from tags
     summary['tags'] = list(set(summary['tags']))
     
     return summary
@@ -470,19 +712,22 @@ async def analyze_ioc(request: IOCRequest):
     if category == 'unknown':
         raise HTTPException(status_code=400, detail=f"Unable to determine IOC type for: {ioc}")
     
-    # Query all threat intelligence sources concurrently
     async with aiohttp.ClientSession() as session:
         tasks = [
             query_virustotal(session, ioc, ioc_type, category),
             query_abuseipdb(session, ioc, ioc_type, category),
             query_urlscan(session, ioc, ioc_type, category),
             query_alienvault(session, ioc, ioc_type, category),
-            query_greynoise(session, ioc, ioc_type, category)
+            query_greynoise(session, ioc, ioc_type, category),
+            query_ipinfo(session, ioc, ioc_type, category),
+            query_threatfox(session, ioc, ioc_type, category),
+            query_malwarebazaar(session, ioc, ioc_type, category),
+            query_whois(session, ioc, ioc_type, category),
+            query_shodan(session, ioc, ioc_type, category)
         ]
         
         vendor_results = await asyncio.gather(*tasks)
     
-    # Generate summary
     summary = generate_summary(list(vendor_results), ioc, ioc_type, category)
     
     return IOCAnalysisResult(
@@ -525,7 +770,12 @@ async def analyze_bulk_iocs(request: BulkIOCRequest):
                 query_abuseipdb(session, ioc, ioc_type, category),
                 query_urlscan(session, ioc, ioc_type, category),
                 query_alienvault(session, ioc, ioc_type, category),
-                query_greynoise(session, ioc, ioc_type, category)
+                query_greynoise(session, ioc, ioc_type, category),
+                query_ipinfo(session, ioc, ioc_type, category),
+                query_threatfox(session, ioc, ioc_type, category),
+                query_malwarebazaar(session, ioc, ioc_type, category),
+                query_whois(session, ioc, ioc_type, category),
+                query_shodan(session, ioc, ioc_type, category)
             ]
             
             vendor_results = await asyncio.gather(*tasks)
@@ -540,7 +790,6 @@ async def analyze_bulk_iocs(request: BulkIOCRequest):
                 summary=summary
             ).model_dump())
             
-            # Small delay to avoid rate limiting
             await asyncio.sleep(0.5)
     
     return {'results': results, 'total': len(results)}
@@ -556,11 +805,15 @@ async def health_check():
             'abuseipdb': bool(ABUSEIPDB_API_KEY),
             'urlscan': bool(URLSCAN_API_KEY),
             'alienvault': bool(ALIENVAULT_API_KEY),
-            'greynoise': bool(GREYNOISE_API_KEY)
+            'greynoise': bool(GREYNOISE_API_KEY),
+            'ipinfo': True,
+            'threatfox': True,
+            'malwarebazaar': True,
+            'whois': True,
+            'shodan': True
         }
     }
 
-# Include the router in the main app
 app.include_router(api_router)
 
 app.add_middleware(
