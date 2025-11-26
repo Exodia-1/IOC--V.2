@@ -897,16 +897,6 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
                 if latest.get('country'):
                     summary['geolocation']['country'] = latest.get('country')
             
-            elif result.vendor == 'ThreatFox':
-                if data.get('found') and data.get('count', 0) > 0:
-                    threat_scores.append(95)
-                    iocs = data.get('iocs', [])
-                    if iocs:
-                        malware = iocs[0].get('malware_printable', 'Unknown')
-                        summary['key_findings'].append(f"ThreatFox: Associated with {malware}")
-                        for i in iocs:
-                            summary['tags'].extend(i.get('tags', []))
-            
             elif result.vendor == 'MalwareBazaar':
                 if data.get('found'):
                     threat_scores.append(100)
