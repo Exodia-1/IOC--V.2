@@ -76,28 +76,13 @@ agenthub/agents/youtube/db
 # Build caches
 .cache/
 
-# Mobile development
-android-sdk/ -e 
 # Environment files
 *.env
 *.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+
+# Old project structure (not needed for Vercel)
+vercel-deploy/
+backend_test.py
+backend_test_results.json
+test_reports/
+tests/
