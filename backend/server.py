@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import re
 import aiohttp
 import asyncio
+import dns.resolver
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -27,7 +28,6 @@ VIRUSTOTAL_API_KEY = os.environ.get('VIRUSTOTAL_API_KEY', '')
 URLSCAN_API_KEY = os.environ.get('URLSCAN_API_KEY', '')
 ALIENVAULT_API_KEY = os.environ.get('ALIENVAULT_API_KEY', '')
 GREYNOISE_API_KEY = os.environ.get('GREYNOISE_API_KEY', '')
-SHODAN_API_KEY = os.environ.get('SHODAN_API_KEY', '')
 
 # Create the main app
 app = FastAPI(title="SOC IOC Analysis Tool")
@@ -60,6 +60,9 @@ class IOCRequest(BaseModel):
 
 class BulkIOCRequest(BaseModel):
     iocs: List[str]
+
+class EmailHeaderRequest(BaseModel):
+    headers: str
 
 class IOCDetection(BaseModel):
     ioc: str
@@ -105,6 +108,147 @@ def detect_ioc_type(ioc: str) -> tuple:
     
     return 'unknown', 'unknown'
 
+# Email Header Parser
+def parse_email_headers(headers_text: str) -> Dict[str, Any]:
+    """Parse email headers and extract security-relevant information"""
+    result = {
+        'from': None,
+        'to': None,
+        'subject': None,
+        'date': None,
+        'message_id': None,
+        'return_path': None,
+        'received_chain': [],
+        'authentication': {
+            'spf': None,
+            'dkim': None,
+            'dmarc': None,
+            'arc': None
+        },
+        'x_headers': {},
+        'content_type': None,
+        'reply_to': None,
+        'originating_ip': None,
+        'spam_score': None,
+        'warnings': []
+    }
+    
+    lines = headers_text.split('\n')
+    current_header = None
+    current_value = ''
+    
+    headers_dict = {}
+    
+    for line in lines:
+        if line.startswith(' ') or line.startswith('\t'):
+            current_value += ' ' + line.strip()
+        else:
+            if current_header:
+                if current_header.lower() in headers_dict:
+                    if isinstance(headers_dict[current_header.lower()], list):
+                        headers_dict[current_header.lower()].append(current_value)
+                    else:
+                        headers_dict[current_header.lower()] = [headers_dict[current_header.lower()], current_value]
+                else:
+                    headers_dict[current_header.lower()] = current_value
+            
+            if ':' in line:
+                current_header, current_value = line.split(':', 1)
+                current_value = current_value.strip()
+            else:
+                current_header = None
+                current_value = ''
+    
+    if current_header:
+        headers_dict[current_header.lower()] = current_value
+    
+    # Extract standard headers
+    result['from'] = headers_dict.get('from')
+    result['to'] = headers_dict.get('to')
+    result['subject'] = headers_dict.get('subject')
+    result['date'] = headers_dict.get('date')
+    result['message_id'] = headers_dict.get('message-id')
+    result['return_path'] = headers_dict.get('return-path')
+    result['reply_to'] = headers_dict.get('reply-to')
+    result['content_type'] = headers_dict.get('content-type')
+    
+    # Extract received chain
+    received = headers_dict.get('received', [])
+    if isinstance(received, str):
+        received = [received]
+    result['received_chain'] = received
+    
+    # Extract originating IP from received headers
+    for recv in result['received_chain']:
+        ip_match = re.search(r'\[([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\]', recv)
+        if ip_match:
+            result['originating_ip'] = ip_match.group(1)
+            break
+    
+    # Extract authentication results
+    auth_results = headers_dict.get('authentication-results', '')
+    if auth_results:
+        if 'spf=pass' in auth_results.lower():
+            result['authentication']['spf'] = 'pass'
+        elif 'spf=fail' in auth_results.lower():
+            result['authentication']['spf'] = 'fail'
+        elif 'spf=softfail' in auth_results.lower():
+            result['authentication']['spf'] = 'softfail'
+        elif 'spf=neutral' in auth_results.lower():
+            result['authentication']['spf'] = 'neutral'
+        elif 'spf=none' in auth_results.lower():
+            result['authentication']['spf'] = 'none'
+            
+        if 'dkim=pass' in auth_results.lower():
+            result['authentication']['dkim'] = 'pass'
+        elif 'dkim=fail' in auth_results.lower():
+            result['authentication']['dkim'] = 'fail'
+        elif 'dkim=none' in auth_results.lower():
+            result['authentication']['dkim'] = 'none'
+            
+        if 'dmarc=pass' in auth_results.lower():
+            result['authentication']['dmarc'] = 'pass'
+        elif 'dmarc=fail' in auth_results.lower():
+            result['authentication']['dmarc'] = 'fail'
+        elif 'dmarc=none' in auth_results.lower():
+            result['authentication']['dmarc'] = 'none'
+    
+    # Check for ARC
+    if 'arc-authentication-results' in headers_dict:
+        result['authentication']['arc'] = 'present'
+    
+    # Extract X-headers
+    for key, value in headers_dict.items():
+        if key.startswith('x-'):
+            result['x_headers'][key] = value
+            if 'spam' in key.lower() and 'score' in key.lower():
+                try:
+                    score_match = re.search(r'[\d.]+', str(value))
+                    if score_match:
+                        result['spam_score'] = float(score_match.group())
+                except:
+                    pass
+    
+    # Security warnings
+    if result['authentication']['spf'] == 'fail':
+        result['warnings'].append('SPF authentication failed - possible spoofing')
+    if result['authentication']['dkim'] == 'fail':
+        result['warnings'].append('DKIM authentication failed - message may be tampered')
+    if result['authentication']['dmarc'] == 'fail':
+        result['warnings'].append('DMARC authentication failed - domain alignment issue')
+    if result['return_path'] and result['from']:
+        from_domain = re.search(r'@([\w.-]+)', str(result['from']))
+        return_domain = re.search(r'@([\w.-]+)', str(result['return_path']))
+        if from_domain and return_domain and from_domain.group(1).lower() != return_domain.group(1).lower():
+            result['warnings'].append('Return-Path domain differs from From domain')
+    if result['reply_to'] and result['from']:
+        from_domain = re.search(r'@([\w.-]+)', str(result['from']))
+        reply_domain = re.search(r'@([\w.-]+)', str(result['reply_to']))
+        if from_domain and reply_domain and from_domain.group(1).lower() != reply_domain.group(1).lower():
+            result['warnings'].append('Reply-To domain differs from From domain')
+    
+    return result
+
 # Threat Intelligence API Functions
 async def query_virustotal(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
     """Query VirusTotal API"""
@@ -121,6 +265,9 @@ async def query_virustotal(session: aiohttp.ClientSession, ioc: str, ioc_type: s
             url = f'https://www.virustotal.com/api/v3/urls/{url_id}'
         elif category == 'hash':
             url = f'https://www.virustotal.com/api/v3/files/{ioc}'
+        elif category == 'email':
+            domain = ioc.split('@')[1] if '@' in ioc else ioc
+            url = f'https://www.virustotal.com/api/v3/domains/{domain}'
         else:
             return VendorResult(vendor='VirusTotal', status='unsupported', error='IOC type not supported')
         
@@ -130,7 +277,6 @@ async def query_virustotal(session: aiohttp.ClientSession, ioc: str, ioc_type: s
                 attrs = data.get('data', {}).get('attributes', {})
                 stats = attrs.get('last_analysis_stats', {})
                 
-                # Calculate total engines
                 total_engines = sum([
                     stats.get('malicious', 0),
                     stats.get('suspicious', 0),
@@ -265,6 +411,9 @@ async def query_alienvault(session: aiohttp.ClientSession, ioc: str, ioc_type: s
             url = f'https://otx.alienvault.com/api/v1/indicators/url/{ioc}/general'
         elif category == 'hash':
             url = f'https://otx.alienvault.com/api/v1/indicators/file/{ioc}/general'
+        elif category == 'email':
+            domain = ioc.split('@')[1] if '@' in ioc else ioc
+            url = f'https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general'
         else:
             return VendorResult(vendor='AlienVault OTX', status='unsupported', error='IOC type not supported')
         
@@ -438,12 +587,15 @@ async def query_malwarebazaar(session: aiohttp.ClientSession, ioc: str, ioc_type
 async def query_whois(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
     """Query WHOIS data via ip-api.com"""
     try:
-        if category not in ['ip', 'domain']:
-            return VendorResult(vendor='WHOIS', status='unsupported', error='Only IPs and domains supported')
+        if category not in ['ip', 'domain', 'email']:
+            return VendorResult(vendor='WHOIS', status='unsupported', error='Only IPs, domains and emails supported')
         
-        # For IP - use ip-api.com
+        lookup_target = ioc
+        if category == 'email':
+            lookup_target = ioc.split('@')[1] if '@' in ioc else ioc
+        
         if category == 'ip':
-            async with session.get(f'http://ip-api.com/json/{ioc}?fields=66846719') as response:
+            async with session.get(f'http://ip-api.com/json/{lookup_target}?fields=66846719') as response:
                 if response.status == 200:
                     data = await response.json()
                     if data.get('status') == 'success':
@@ -471,10 +623,8 @@ async def query_whois(session: aiohttp.ClientSession, ioc: str, ioc_type: str, c
                         return VendorResult(vendor='WHOIS', status='error', error=data.get('message', 'Unknown error'))
                 else:
                     return VendorResult(vendor='WHOIS', status='error', error=f'HTTP {response.status}')
-        
-        # For domain - use a free WHOIS API
         else:
-            async with session.get(f'https://whois.freeaiapi.xyz/?name={ioc}') as response:
+            async with session.get(f'https://whois.freeaiapi.xyz/?name={lookup_target}') as response:
                 if response.status == 200:
                     data = await response.json()
                     result_data = {
@@ -524,6 +674,147 @@ async def query_shodan(session: aiohttp.ClientSession, ioc: str, ioc_type: str, 
         logger.error(f"Shodan error: {str(e)}")
         return VendorResult(vendor='Shodan', status='error', error=str(e))
 
+async def query_mxtoolbox(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
+    """Query MXToolbox-style DNS records for domain/email analysis"""
+    try:
+        if category not in ['domain', 'email']:
+            return VendorResult(vendor='MXToolbox', status='unsupported', error='Only domains and emails supported')
+        
+        domain = ioc.split('@')[1] if '@' in ioc else ioc
+        
+        result_data = {
+            'domain': domain,
+            'mx_records': [],
+            'txt_records': [],
+            'spf_record': None,
+            'dmarc_record': None,
+            'dkim_selector': None,
+            'a_records': [],
+            'ns_records': [],
+            'issues': []
+        }
+        
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = 5
+        resolver.lifetime = 5
+        
+        # MX Records
+        try:
+            mx_answers = resolver.resolve(domain, 'MX')
+            result_data['mx_records'] = [{'priority': r.preference, 'host': str(r.exchange).rstrip('.')} for r in mx_answers]
+        except:
+            result_data['issues'].append('No MX records found')
+        
+        # TXT Records (including SPF)
+        try:
+            txt_answers = resolver.resolve(domain, 'TXT')
+            for r in txt_answers:
+                txt_value = str(r).strip('"')
+                result_data['txt_records'].append(txt_value)
+                if txt_value.startswith('v=spf1'):
+                    result_data['spf_record'] = txt_value
+        except:
+            pass
+        
+        # DMARC Record
+        try:
+            dmarc_answers = resolver.resolve(f'_dmarc.{domain}', 'TXT')
+            for r in dmarc_answers:
+                txt_value = str(r).strip('"')
+                if 'v=DMARC1' in txt_value:
+                    result_data['dmarc_record'] = txt_value
+        except:
+            result_data['issues'].append('No DMARC record found')
+        
+        # A Records
+        try:
+            a_answers = resolver.resolve(domain, 'A')
+            result_data['a_records'] = [str(r) for r in a_answers]
+        except:
+            pass
+        
+        # NS Records
+        try:
+            ns_answers = resolver.resolve(domain, 'NS')
+            result_data['ns_records'] = [str(r).rstrip('.') for r in ns_answers]
+        except:
+            pass
+        
+        # Check for common issues
+        if not result_data['spf_record']:
+            result_data['issues'].append('No SPF record found - email spoofing possible')
+        elif '-all' not in result_data['spf_record'] and '~all' not in result_data['spf_record']:
+            result_data['issues'].append('SPF record missing strict policy (-all or ~all)')
+        
+        if not result_data['dmarc_record']:
+            result_data['issues'].append('No DMARC record - domain vulnerable to spoofing')
+        
+        return VendorResult(vendor='MXToolbox', status='success', data=result_data)
+    except Exception as e:
+        logger.error(f"MXToolbox error: {str(e)}")
+        return VendorResult(vendor='MXToolbox', status='error', error=str(e))
+
+async def query_email_domain(session: aiohttp.ClientSession, ioc: str, ioc_type: str, category: str) -> VendorResult:
+    """Analyze email domain for security indicators"""
+    try:
+        if category != 'email':
+            return VendorResult(vendor='Email Domain', status='unsupported', error='Only email addresses supported')
+        
+        domain = ioc.split('@')[1] if '@' in ioc else None
+        if not domain:
+            return VendorResult(vendor='Email Domain', status='error', error='Invalid email format')
+        
+        result_data = {
+            'email': ioc,
+            'domain': domain,
+            'local_part': ioc.split('@')[0],
+            'domain_age': None,
+            'suspicious_patterns': [],
+            'disposable': False,
+            'free_provider': False,
+            'business_domain': True
+        }
+        
+        # Check for free email providers
+        free_providers = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 
+                         'mail.com', 'protonmail.com', 'icloud.com', 'yandex.com', 'gmx.com',
+                         'zoho.com', 'tutanota.com', 'fastmail.com', 'live.com', 'msn.com']
+        if domain.lower() in free_providers:
+            result_data['free_provider'] = True
+            result_data['business_domain'] = False
+        
+        # Check for disposable email patterns
+        disposable_patterns = ['tempmail', 'throwaway', 'guerrilla', 'mailinator', '10minute',
+                              'trashmail', 'fakeinbox', 'sharklasers', 'guerrillamail', 'maildrop']
+        for pattern in disposable_patterns:
+            if pattern in domain.lower():
+                result_data['disposable'] = True
+                result_data['suspicious_patterns'].append(f'Disposable email pattern: {pattern}')
+        
+        # Check local part for suspicious patterns
+        local_part = result_data['local_part'].lower()
+        if re.match(r'^[a-z]{1,2}\d{5,}', local_part):
+            result_data['suspicious_patterns'].append('Local part matches bot pattern (letter + many numbers)')
+        if len(local_part) > 30:
+            result_data['suspicious_patterns'].append('Unusually long local part')
+        if re.search(r'\d{8,}', local_part):
+            result_data['suspicious_patterns'].append('Contains long number sequence')
+        
+        # Query domain creation via WHOIS
+        try:
+            async with session.get(f'https://whois.freeaiapi.xyz/?name={domain}') as response:
+                if response.status == 200:
+                    whois_data = await response.json()
+                    result_data['domain_age'] = whois_data.get('creation_date')
+                    result_data['registrar'] = whois_data.get('registrar')
+        except:
+            pass
+        
+        return VendorResult(vendor='Email Domain', status='success', data=result_data)
+    except Exception as e:
+        logger.error(f"Email Domain error: {str(e)}")
+        return VendorResult(vendor='Email Domain', status='error', error=str(e))
+
 def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str, category: str) -> Dict[str, Any]:
     """Generate consolidated summary from all vendor results"""
     summary = {
@@ -535,9 +826,10 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
         'key_findings': [],
         'geolocation': {},
         'tags': [],
-        'recommendations': [],
         'open_ports': [],
-        'vulnerabilities': []
+        'vulnerabilities': [],
+        'email_security': {},
+        'dns_records': {}
     }
     
     threat_scores = []
@@ -653,6 +945,40 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
                     summary['geolocation']['isp'] = data.get('isp')
                 if data.get('country'):
                     summary['geolocation']['country'] = data.get('country')
+            
+            elif result.vendor == 'MXToolbox':
+                mx_records = data.get('mx_records', [])
+                if mx_records:
+                    summary['dns_records']['mx'] = mx_records
+                if data.get('spf_record'):
+                    summary['dns_records']['spf'] = data.get('spf_record')
+                    summary['email_security']['spf'] = 'present'
+                else:
+                    summary['email_security']['spf'] = 'missing'
+                if data.get('dmarc_record'):
+                    summary['dns_records']['dmarc'] = data.get('dmarc_record')
+                    summary['email_security']['dmarc'] = 'present'
+                else:
+                    summary['email_security']['dmarc'] = 'missing'
+                issues = data.get('issues', [])
+                if issues:
+                    for issue in issues:
+                        summary['key_findings'].append(f"MXToolbox: {issue}")
+                        if 'spoofing' in issue.lower():
+                            threat_scores.append(40)
+            
+            elif result.vendor == 'Email Domain':
+                if data.get('disposable'):
+                    threat_scores.append(60)
+                    summary['tags'].append('Disposable Email')
+                    summary['key_findings'].append("Email Domain: Disposable email service detected")
+                if data.get('free_provider'):
+                    summary['tags'].append('Free Email Provider')
+                suspicious = data.get('suspicious_patterns', [])
+                if suspicious:
+                    threat_scores.append(30)
+                    for pattern in suspicious:
+                        summary['key_findings'].append(f"Email Domain: {pattern}")
     
     # Calculate overall threat level
     if threat_scores:
@@ -661,24 +987,15 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
         
         if avg_score >= 70:
             summary['threat_level'] = 'high'
-            summary['recommendations'].append('Block this IOC immediately')
-            summary['recommendations'].append('Investigate any systems that communicated with this IOC')
         elif avg_score >= 40:
             summary['threat_level'] = 'medium'
-            summary['recommendations'].append('Monitor traffic related to this IOC')
-            summary['recommendations'].append('Consider blocking if suspicious activity continues')
         elif avg_score >= 10:
             summary['threat_level'] = 'low'
-            summary['recommendations'].append('Continue monitoring')
         else:
             summary['threat_level'] = 'clean'
-            summary['recommendations'].append('No immediate action required')
     else:
         if summary['successful_queries'] > 0:
             summary['threat_level'] = 'clean'
-            summary['recommendations'].append('No threat indicators found')
-        else:
-            summary['recommendations'].append('Unable to determine threat level - check API connectivity')
     
     summary['tags'] = list(set(summary['tags']))
     
@@ -723,7 +1040,9 @@ async def analyze_ioc(request: IOCRequest):
             query_threatfox(session, ioc, ioc_type, category),
             query_malwarebazaar(session, ioc, ioc_type, category),
             query_whois(session, ioc, ioc_type, category),
-            query_shodan(session, ioc, ioc_type, category)
+            query_shodan(session, ioc, ioc_type, category),
+            query_mxtoolbox(session, ioc, ioc_type, category),
+            query_email_domain(session, ioc, ioc_type, category)
         ]
         
         vendor_results = await asyncio.gather(*tasks)
@@ -775,7 +1094,9 @@ async def analyze_bulk_iocs(request: BulkIOCRequest):
                 query_threatfox(session, ioc, ioc_type, category),
                 query_malwarebazaar(session, ioc, ioc_type, category),
                 query_whois(session, ioc, ioc_type, category),
-                query_shodan(session, ioc, ioc_type, category)
+                query_shodan(session, ioc, ioc_type, category),
+                query_mxtoolbox(session, ioc, ioc_type, category),
+                query_email_domain(session, ioc, ioc_type, category)
             ]
             
             vendor_results = await asyncio.gather(*tasks)
@@ -794,6 +1115,19 @@ async def analyze_bulk_iocs(request: BulkIOCRequest):
     
     return {'results': results, 'total': len(results)}
 
+@api_router.post("/analyze/email-headers")
+async def analyze_email_headers(request: EmailHeaderRequest):
+    """Analyze email headers for security indicators"""
+    if not request.headers.strip():
+        raise HTTPException(status_code=400, detail="Email headers cannot be empty")
+    
+    parsed = parse_email_headers(request.headers)
+    
+    return {
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'analysis': parsed
+    }
+
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -810,7 +1144,9 @@ async def health_check():
             'threatfox': True,
             'malwarebazaar': True,
             'whois': True,
-            'shodan': True
+            'shodan': True,
+            'mxtoolbox': True,
+            'email_domain': True
         }
     }
 
