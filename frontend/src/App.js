@@ -385,6 +385,29 @@ const VendorCard = ({ result }) => {
       case 'WHOIS':
         return (
           <div className="space-y-3">
+            {/* Domain Registration Info */}
+            {(data.creation_date || data.expiration_date) && (
+              <div className="grid grid-cols-2 gap-2">
+                {data.creation_date && (
+                  <div className="bg-slate-800/50 rounded-lg p-2">
+                    <p className="text-xs text-slate-400 mb-1">Registered</p>
+                    <p className="text-sm font-medium text-emerald-400">{data.creation_date}</p>
+                  </div>
+                )}
+                {data.expiration_date && (
+                  <div className="bg-slate-800/50 rounded-lg p-2">
+                    <p className="text-xs text-slate-400 mb-1">Expires</p>
+                    <p className="text-sm font-medium text-amber-400">{data.expiration_date}</p>
+                  </div>
+                )}
+              </div>
+            )}
+            {data.registrar && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Building className="w-4 h-4 text-slate-400" />
+                <span>Registrar: {data.registrar}</span>
+              </div>
+            )}
             {data.country && (
               <div className="flex items-center gap-2 text-sm text-slate-300">
                 <MapPin className="w-4 h-4 text-slate-400" />
@@ -394,7 +417,7 @@ const VendorCard = ({ result }) => {
             {data.isp && (
               <div className="flex items-center gap-2 text-sm text-slate-300">
                 <Building className="w-4 h-4 text-slate-400" />
-                <span>{data.isp}</span>
+                <span>ISP: {data.isp}</span>
               </div>
             )}
             {data.org && (
@@ -408,10 +431,16 @@ const VendorCard = ({ result }) => {
               {data.hosting && <Badge variant="outline" className="bg-cyan-500/20 text-cyan-400">Hosting</Badge>}
               {data.mobile && <Badge variant="outline" className="bg-purple-500/20 text-purple-400">Mobile</Badge>}
             </div>
-            {data.registrar && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Building className="w-4 h-4 text-slate-400" />
-                <span>Registrar: {data.registrar}</span>
+            {data.name_servers && data.name_servers.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Name Servers</p>
+                <div className="flex flex-wrap gap-1">
+                  {data.name_servers.slice(0, 4).map((ns, idx) => (
+                    <Badge key={idx} variant="outline" className="bg-slate-700/50 text-slate-300 text-xs">
+                      {ns}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
           </div>
