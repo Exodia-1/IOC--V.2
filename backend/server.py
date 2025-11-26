@@ -1129,7 +1129,6 @@ async def health_check():
             'alienvault': bool(ALIENVAULT_API_KEY),
             'greynoise': bool(GREYNOISE_API_KEY),
             'ipinfo': True,
-            'threatfox': True,
             'malwarebazaar': True,
             'whois': True,
             'shodan': True,
