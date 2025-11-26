@@ -226,7 +226,7 @@ def parse_email_headers(headers_text: str) -> Dict[str, Any]:
                     score_match = re.search(r'[\d.]+', str(value))
                     if score_match:
                         result['spam_score'] = float(score_match.group())
-                except:
+                except Exception:
                     pass
     
     # Security warnings
@@ -702,7 +702,7 @@ async def query_mxtoolbox(session: aiohttp.ClientSession, ioc: str, ioc_type: st
         try:
             mx_answers = resolver.resolve(domain, 'MX')
             result_data['mx_records'] = [{'priority': r.preference, 'host': str(r.exchange).rstrip('.')} for r in mx_answers]
-        except:
+        except Exception:
             result_data['issues'].append('No MX records found')
         
         # TXT Records (including SPF)
@@ -713,7 +713,7 @@ async def query_mxtoolbox(session: aiohttp.ClientSession, ioc: str, ioc_type: st
                 result_data['txt_records'].append(txt_value)
                 if txt_value.startswith('v=spf1'):
                     result_data['spf_record'] = txt_value
-        except:
+        except Exception:
             pass
         
         # DMARC Record
@@ -723,21 +723,21 @@ async def query_mxtoolbox(session: aiohttp.ClientSession, ioc: str, ioc_type: st
                 txt_value = str(r).strip('"')
                 if 'v=DMARC1' in txt_value:
                     result_data['dmarc_record'] = txt_value
-        except:
+        except Exception:
             result_data['issues'].append('No DMARC record found')
         
         # A Records
         try:
             a_answers = resolver.resolve(domain, 'A')
             result_data['a_records'] = [str(r) for r in a_answers]
-        except:
+        except Exception:
             pass
         
         # NS Records
         try:
             ns_answers = resolver.resolve(domain, 'NS')
             result_data['ns_records'] = [str(r).rstrip('.') for r in ns_answers]
-        except:
+        except Exception:
             pass
         
         # Check for common issues
@@ -807,7 +807,7 @@ async def query_email_domain(session: aiohttp.ClientSession, ioc: str, ioc_type:
                     whois_data = await response.json()
                     result_data['domain_age'] = whois_data.get('creation_date')
                     result_data['registrar'] = whois_data.get('registrar')
-        except:
+        except Exception:
             pass
         
         return VendorResult(vendor='Email Domain', status='success', data=result_data)
