@@ -1,38 +1,728 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
+import { Toaster, toast } from "sonner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Shield, 
+  Search, 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle, 
+  Globe, 
+  Server, 
+  Mail, 
+  Hash, 
+  Link2, 
+  Loader2,
+  Info,
+  AlertCircle,
+  Clock,
+  MapPin,
+  Building,
+  Tag,
+  FileWarning,
+  ChevronRight,
+  Zap
+} from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+const IOCTypeIcon = ({ category }) => {
+  switch (category) {
+    case 'ip': return <Server className="w-4 h-4" />;
+    case 'domain': return <Globe className="w-4 h-4" />;
+    case 'url': return <Link2 className="w-4 h-4" />;
+    case 'email': return <Mail className="w-4 h-4" />;
+    case 'hash': return <Hash className="w-4 h-4" />;
+    default: return <AlertCircle className="w-4 h-4" />;
+  }
+};
+
+const ThreatBadge = ({ level }) => {
+  const config = {
+    high: { className: "bg-red-500/20 text-red-400 border-red-500/30", icon: AlertTriangle },
+    medium: { className: "bg-amber-500/20 text-amber-400 border-amber-500/30", icon: AlertCircle },
+    low: { className: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30", icon: Info },
+    clean: { className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", icon: CheckCircle },
+    unknown: { className: "bg-slate-500/20 text-slate-400 border-slate-500/30", icon: AlertCircle }
+  };
+  
+  const { className, icon: Icon } = config[level] || config.unknown;
+  
+  return (
+    <Badge variant="outline" className={`${className} font-semibold uppercase tracking-wide`} data-testid={`threat-badge-${level}`}>
+      <Icon className="w-3 h-3 mr-1" />
+      {level}
+    </Badge>
+  );
+};
+
+const VendorStatusBadge = ({ status }) => {
+  const config = {
+    success: { className: "bg-emerald-500/20 text-emerald-400", label: "Success" },
+    not_found: { className: "bg-slate-500/20 text-slate-400", label: "Not Found" },
+    unsupported: { className: "bg-slate-600/20 text-slate-500", label: "N/A" },
+    error: { className: "bg-red-500/20 text-red-400", label: "Error" }
+  };
+  
+  const { className, label } = config[status] || config.error;
+  
+  return <Badge variant="outline" className={className}>{label}</Badge>;
+};
+
+const VendorCard = ({ result }) => {
+  const { vendor, status, data, error } = result;
+  
+  const renderVendorData = () => {
+    if (status !== 'success' || !data) {
+      return (
+        <p className="text-slate-400 text-sm">
+          {error || (status === 'not_found' ? 'No data found for this IOC' : 'Data not available')}
+        </p>
+      );
+    }
+    
+    switch (vendor) {
+      case 'VirusTotal':
+        return (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-800/50 rounded-lg p-3">
+                <p className="text-xs text-slate-400 mb-1">Malicious</p>
+                <p className="text-2xl font-bold text-red-400">{data.malicious_count || 0}</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-3">
+                <p className="text-xs text-slate-400 mb-1">Suspicious</p>
+                <p className="text-2xl font-bold text-amber-400">{data.suspicious_count || 0}</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-3">
+                <p className="text-xs text-slate-400 mb-1">Harmless</p>
+                <p className="text-2xl font-bold text-emerald-400">{data.harmless_count || 0}</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-3">
+                <p className="text-xs text-slate-400 mb-1">Undetected</p>
+                <p className="text-2xl font-bold text-slate-400">{data.undetected_count || 0}</p>
+              </div>
+            </div>
+            {data.country && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <MapPin className="w-4 h-4 text-slate-400" />
+                <span>Country: {data.country}</span>
+              </div>
+            )}
+            {data.as_owner && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Building className="w-4 h-4 text-slate-400" />
+                <span>ASN: {data.as_owner}</span>
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'AbuseIPDB':
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <p className="text-xs text-slate-400 mb-1">Abuse Confidence Score</p>
+                <div className="flex items-center gap-3">
+                  <Progress 
+                    value={data.abuse_confidence_score || 0} 
+                    className="flex-1 h-2" 
+                  />
+                  <span className={`text-lg font-bold ${
+                    (data.abuse_confidence_score || 0) > 50 ? 'text-red-400' : 
+                    (data.abuse_confidence_score || 0) > 20 ? 'text-amber-400' : 'text-emerald-400'
+                  }`}>
+                    {data.abuse_confidence_score || 0}%
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-800/50 rounded-lg p-3">
+                <p className="text-xs text-slate-400 mb-1">Total Reports</p>
+                <p className="text-xl font-bold text-slate-200">{data.total_reports || 0}</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-3">
+                <p className="text-xs text-slate-400 mb-1">Distinct Users</p>
+                <p className="text-xl font-bold text-slate-200">{data.num_distinct_users || 0}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {data.is_tor && <Badge variant="outline" className="bg-purple-500/20 text-purple-400">TOR Exit Node</Badge>}
+              {data.is_whitelisted && <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400">Whitelisted</Badge>}
+            </div>
+            {data.isp && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Building className="w-4 h-4 text-slate-400" />
+                <span>ISP: {data.isp}</span>
+              </div>
+            )}
+            {data.country_code && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <MapPin className="w-4 h-4 text-slate-400" />
+                <span>Country: {data.country_code}</span>
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'GreyNoise':
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-slate-400">Classification:</p>
+              <Badge variant="outline" className={`
+                ${data.classification === 'malicious' ? 'bg-red-500/20 text-red-400' : 
+                  data.classification === 'benign' ? 'bg-emerald-500/20 text-emerald-400' : 
+                  'bg-slate-500/20 text-slate-400'}
+              `}>
+                {data.classification || 'Unknown'}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {data.noise && <Badge variant="outline" className="bg-amber-500/20 text-amber-400">Internet Noise</Badge>}
+              {data.riot && <Badge variant="outline" className="bg-cyan-500/20 text-cyan-400">RIOT</Badge>}
+            </div>
+            {data.name && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Tag className="w-4 h-4 text-slate-400" />
+                <span>Name: {data.name}</span>
+              </div>
+            )}
+            {data.last_seen && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span>Last Seen: {data.last_seen}</span>
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'AlienVault OTX':
+        return (
+          <div className="space-y-3">
+            <div className="bg-slate-800/50 rounded-lg p-3">
+              <p className="text-xs text-slate-400 mb-1">Threat Pulses</p>
+              <p className={`text-2xl font-bold ${(data.pulse_count || 0) > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {data.pulse_count || 0}
+              </p>
+            </div>
+            {data.pulses && data.pulses.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-400">Recent Pulses:</p>
+                {data.pulses.slice(0, 3).map((pulse, idx) => (
+                  <div key={idx} className="bg-slate-800/30 rounded p-2 text-xs text-slate-300">
+                    {pulse.name || 'Unnamed Pulse'}
+                  </div>
+                ))}
+              </div>
+            )}
+            {data.country_code && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <MapPin className="w-4 h-4 text-slate-400" />
+                <span>Country: {data.country_code}</span>
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'URLScan':
+        const latest = data.latest_scan;
+        return (
+          <div className="space-y-3">
+            <div className="bg-slate-800/50 rounded-lg p-3">
+              <p className="text-xs text-slate-400 mb-1">Total Scan Results</p>
+              <p className="text-2xl font-bold text-slate-200">{data.total_results || 0}</p>
+            </div>
+            {latest && (
+              <>
+                {latest.domain && (
+                  <div className="flex items-center gap-2 text-sm text-slate-300">
+                    <Globe className="w-4 h-4 text-slate-400" />
+                    <span>Domain: {latest.domain}</span>
+                  </div>
+                )}
+                {latest.ip && (
+                  <div className="flex items-center gap-2 text-sm text-slate-300">
+                    <Server className="w-4 h-4 text-slate-400" />
+                    <span>IP: {latest.ip}</span>
+                  </div>
+                )}
+                {latest.country && (
+                  <div className="flex items-center gap-2 text-sm text-slate-300">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <span>Country: {latest.country}</span>
+                  </div>
+                )}
+                {latest.server && (
+                  <div className="flex items-center gap-2 text-sm text-slate-300">
+                    <Building className="w-4 h-4 text-slate-400" />
+                    <span>Server: {latest.server}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+        
+      default:
+        return <pre className="text-xs text-slate-400 overflow-auto">{JSON.stringify(data, null, 2)}</pre>;
     }
   };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
+  
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
+    <Card className="bg-slate-800/30 border-slate-700/50" data-testid={`vendor-card-${vendor.toLowerCase().replace(/\s+/g, '-')}`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-medium text-slate-200">{vendor}</CardTitle>
+          <VendorStatusBadge status={status} />
+        </div>
+      </CardHeader>
+      <CardContent>
+        {renderVendorData()}
+      </CardContent>
+    </Card>
+  );
+};
+
+const AnalysisResults = ({ result }) => {
+  if (!result) return null;
+  
+  const { ioc, ioc_type, category, summary, vendor_results, timestamp } = result;
+  
+  return (
+    <div className="space-y-6" data-testid="analysis-results">
+      {/* Header Section */}
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardContent className="pt-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-slate-700/50 rounded-xl">
+                <IOCTypeIcon category={category} />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Analyzed IOC</p>
+                <p className="text-lg font-mono text-slate-200 break-all" data-testid="analyzed-ioc-value">{ioc}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="outline" className="bg-slate-700/50 text-slate-300 text-xs">
+                    {ioc_type.toUpperCase()}
+                  </Badge>
+                  <span className="text-xs text-slate-500">
+                    <Clock className="w-3 h-3 inline mr-1" />
+                    {new Date(timestamp).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <ThreatBadge level={summary.threat_level} />
+              {summary.confidence > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Badge variant="outline" className="bg-slate-700/50 text-slate-300">
+                        {summary.confidence}% confidence
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Threat confidence score based on aggregated data</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Summary Section */}
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2 text-slate-200">
+            <Zap className="w-5 h-5 text-cyan-400" />
+            Threat Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Key Findings */}
+          {summary.key_findings && summary.key_findings.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Key Findings</p>
+              <ul className="space-y-2">
+                {summary.key_findings.map((finding, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                    <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                    {finding}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {/* Tags */}
+          {summary.tags && summary.tags.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Tags</p>
+              <div className="flex flex-wrap gap-2">
+                {summary.tags.map((tag, idx) => (
+                  <Badge key={idx} variant="outline" className="bg-slate-700/50 text-slate-300">
+                    <Tag className="w-3 h-3 mr-1" />
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Geolocation */}
+          {summary.geolocation && Object.keys(summary.geolocation).length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Geolocation</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(summary.geolocation).map(([key, value]) => (
+                  <div key={key} className="bg-slate-800/50 rounded-lg p-2">
+                    <p className="text-xs text-slate-500 capitalize">{key.replace('_', ' ')}</p>
+                    <p className="text-sm text-slate-300 truncate">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Recommendations */}
+          {summary.recommendations && summary.recommendations.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Recommendations</p>
+              <div className={`rounded-lg p-4 ${
+                summary.threat_level === 'high' ? 'bg-red-500/10 border border-red-500/20' :
+                summary.threat_level === 'medium' ? 'bg-amber-500/10 border border-amber-500/20' :
+                'bg-emerald-500/10 border border-emerald-500/20'
+              }`}>
+                <ul className="space-y-1">
+                  {summary.recommendations.map((rec, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm text-slate-300">
+                      <FileWarning className={`w-4 h-4 ${
+                        summary.threat_level === 'high' ? 'text-red-400' :
+                        summary.threat_level === 'medium' ? 'text-amber-400' :
+                        'text-emerald-400'
+                      }`} />
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Vendor Results */}
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2 text-slate-200">
+            <Shield className="w-5 h-5 text-cyan-400" />
+            Vendor Intelligence
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            {summary.successful_queries} of {summary.total_sources} sources returned data
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {vendor_results.map((result, idx) => (
+              <VendorCard key={idx} result={result} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const SOCDashboard = () => {
+  const [iocInput, setIocInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [detectedType, setDetectedType] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkResults, setBulkResults] = useState([]);
+  
+  const detectIOC = async (value) => {
+    if (!value.trim()) {
+      setDetectedType(null);
+      return;
+    }
+    
+    try {
+      const response = await axios.post(`${API}/detect`, { ioc: value.split('\n')[0].trim() });
+      setDetectedType(response.data);
+    } catch (error) {
+      setDetectedType(null);
+    }
+  };
+  
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setIocInput(value);
+    
+    // Debounce detection
+    const timer = setTimeout(() => detectIOC(value), 300);
+    return () => clearTimeout(timer);
+  };
+  
+  const analyzeIOC = async () => {
+    if (!iocInput.trim()) {
+      toast.error('Please enter an IOC to analyze');
+      return;
+    }
+    
+    setIsLoading(true);
+    setAnalysisResult(null);
+    setBulkResults([]);
+    
+    try {
+      if (bulkMode) {
+        const iocs = iocInput.split('\n').filter(i => i.trim());
+        if (iocs.length > 20) {
+          toast.error('Maximum 20 IOCs allowed per request');
+          setIsLoading(false);
+          return;
+        }
+        
+        const response = await axios.post(`${API}/analyze/bulk`, { iocs });
+        setBulkResults(response.data.results);
+        toast.success(`Analyzed ${response.data.total} IOCs`);
+      } else {
+        const response = await axios.post(`${API}/analyze`, { ioc: iocInput.trim() });
+        setAnalysisResult(response.data);
+        toast.success('Analysis complete');
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || 'Failed to analyze IOC';
+      toast.error(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <div className="min-h-screen bg-slate-900" data-testid="soc-dashboard">
+      <Toaster position="top-right" theme="dark" richColors />
+      
+      {/* Header */}
+      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-cyan-500/20 rounded-lg">
+                <Shield className="w-6 h-6 text-cyan-400" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-slate-100 font-['Space_Grotesk']">SOC IOC Analyzer</h1>
+                <p className="text-xs text-slate-400">Threat Intelligence Hub</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                <span className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></span>
+                Online
+              </Badge>
+            </div>
+          </div>
+        </div>
       </header>
+      
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Input Section */}
+        <Card className="bg-slate-800/50 border-slate-700/50 mb-8">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-slate-200 flex items-center gap-2">
+                  <Search className="w-5 h-5 text-cyan-400" />
+                  IOC Analysis
+                </CardTitle>
+                <CardDescription className="text-slate-400">
+                  Enter IP, domain, URL, email, or file hash to analyze
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={bulkMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBulkMode(!bulkMode)}
+                  className={bulkMode ? "bg-cyan-600 hover:bg-cyan-700" : "border-slate-600 text-slate-300 hover:bg-slate-700"}
+                  data-testid="bulk-mode-toggle"
+                >
+                  Bulk Mode
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative">
+              {bulkMode ? (
+                <textarea
+                  value={iocInput}
+                  onChange={handleInputChange}
+                  placeholder="Enter IOCs (one per line, max 20)..."
+                  className="w-full h-32 bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 font-mono text-sm resize-none"
+                  data-testid="ioc-input-bulk"
+                />
+              ) : (
+                <Input
+                  type="text"
+                  value={iocInput}
+                  onChange={handleInputChange}
+                  placeholder="Enter IOC (e.g., 8.8.8.8, google.com, hash...)"
+                  className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-500 focus:ring-cyan-500/50 focus:border-cyan-500/50 h-12 font-mono"
+                  onKeyDown={(e) => e.key === 'Enter' && analyzeIOC()}
+                  data-testid="ioc-input"
+                />
+              )}
+            </div>
+            
+            {/* Detection Preview */}
+            {detectedType && !bulkMode && (
+              <div className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50" data-testid="detection-preview">
+                <div className="p-2 bg-cyan-500/20 rounded">
+                  <IOCTypeIcon category={detectedType.category} />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400">Detected Type</p>
+                  <p className="text-sm font-medium text-slate-200">
+                    {detectedType.ioc_type.toUpperCase()} 
+                    <span className="text-slate-400 font-normal"> ({detectedType.category})</span>
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={analyzeIOC}
+                disabled={isLoading || !iocInput.trim()}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white px-6"
+                data-testid="analyze-button"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4 mr-2" />
+                    Analyze {bulkMode ? 'All' : 'IOC'}
+                  </>
+                )}
+              </Button>
+              
+              {(analysisResult || bulkResults.length > 0) && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setAnalysisResult(null);
+                    setBulkResults([]);
+                    setIocInput('');
+                    setDetectedType(null);
+                  }}
+                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  data-testid="clear-button"
+                >
+                  Clear Results
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Results Section */}
+        {analysisResult && <AnalysisResults result={analysisResult} />}
+        
+        {/* Bulk Results */}
+        {bulkResults.length > 0 && (
+          <div className="space-y-4" data-testid="bulk-results">
+            <h2 className="text-lg font-semibold text-slate-200">Bulk Analysis Results ({bulkResults.length})</h2>
+            <Accordion type="single" collapsible className="space-y-2">
+              {bulkResults.map((result, idx) => (
+                <AccordionItem 
+                  key={idx} 
+                  value={`item-${idx}`}
+                  className="bg-slate-800/50 border border-slate-700/50 rounded-lg overflow-hidden"
+                >
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-slate-800/80">
+                    <div className="flex items-center gap-3 w-full">
+                      <IOCTypeIcon category={result.category} />
+                      <span className="font-mono text-sm text-slate-200 truncate flex-1 text-left">
+                        {result.ioc}
+                      </span>
+                      <ThreatBadge level={result.summary?.threat_level || 'unknown'} />
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    <AnalysisResults result={result} />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        )}
+        
+        {/* Empty State */}
+        {!analysisResult && bulkResults.length === 0 && !isLoading && (
+          <div className="text-center py-16" data-testid="empty-state">
+            <div className="inline-flex p-4 bg-slate-800/50 rounded-full mb-4">
+              <Shield className="w-12 h-12 text-slate-600" />
+            </div>
+            <h3 className="text-lg font-medium text-slate-400 mb-2">Ready to Analyze</h3>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              Enter an IOC above to query multiple threat intelligence sources and get consolidated security insights.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-6">
+              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                <Server className="w-3 h-3 mr-1" /> IP Addresses
+              </Badge>
+              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                <Globe className="w-3 h-3 mr-1" /> Domains
+              </Badge>
+              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                <Link2 className="w-3 h-3 mr-1" /> URLs
+              </Badge>
+              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                <Mail className="w-3 h-3 mr-1" /> Emails
+              </Badge>
+              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                <Hash className="w-3 h-3 mr-1" /> File Hashes
+              </Badge>
+            </div>
+          </div>
+        )}
+      </main>
+      
+      {/* Footer */}
+      <footer className="border-t border-slate-800 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <p>SOC IOC Analyzer v1.0</p>
+            <p>Powered by VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, GreyNoise</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
@@ -42,9 +732,8 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
+          <Route path="/" element={<SOCDashboard />} />
+          <Route path="*" element={<SOCDashboard />} />
         </Routes>
       </BrowserRouter>
     </div>
