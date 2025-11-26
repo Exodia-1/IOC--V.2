@@ -2041,7 +2041,7 @@
                       {
                         "type": "TXT",
                         "ttl": 3600,
-                        "value": "docusign=05958488-4752-4ef2-95eb-aa7ba8a3bd0e"
+                        "value": "docusign=threat-intel-hub-10"
                       },
                       {
                         "type": "AAAA",
@@ -2082,7 +2082,7 @@
                       {
                         "type": "TXT",
                         "ttl": 3600,
-                        "value": "docusign=1b0a6754-49b1-4db5-8540-d2c12664b289"
+                        "value": "docusign=threat-intel-hub-10"
                       },
                       {
                         "type": "NS",
@@ -6335,7 +6335,7 @@
                           {
                             "type": "TXT",
                             "ttl": 3600,
-                            "value": "docusign=05958488-4752-4ef2-95eb-aa7ba8a3bd0e"
+                            "value": "docusign=threat-intel-hub-10"
                           },
                           {
                             "type": "AAAA",
@@ -6376,7 +6376,7 @@
                           {
                             "type": "TXT",
                             "ttl": 3600,
-                            "value": "docusign=1b0a6754-49b1-4db5-8540-d2c12664b289"
+                            "value": "docusign=threat-intel-hub-10"
                           },
                           {
                             "type": "NS",
