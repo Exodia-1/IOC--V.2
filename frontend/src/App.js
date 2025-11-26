@@ -1137,7 +1137,7 @@ const SOCDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <p>SOC IOC Analyzer v1.0</p>
-            <p>VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, GreyNoise, Shodan, ThreatFox, MalwareBazaar, MXToolbox</p>
+            <p>VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, GreyNoise, Shodan, MalwareBazaar, MXToolbox</p>
           </div>
         </div>
       </footer>
