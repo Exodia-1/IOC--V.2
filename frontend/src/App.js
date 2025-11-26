@@ -13,6 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Shield, 
   Search, 
@@ -37,7 +38,12 @@ import {
   Radio,
   Bug,
   Network,
-  Eye
+  Eye,
+  FileText,
+  AtSign,
+  ShieldCheck,
+  ShieldX,
+  ShieldAlert
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -84,6 +90,17 @@ const VendorStatusBadge = ({ status }) => {
   const { className, label } = config[status] || config.error;
   
   return <Badge variant="outline" className={className}>{label}</Badge>;
+};
+
+const AuthBadge = ({ status }) => {
+  if (status === 'pass' || status === 'present') {
+    return <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400"><ShieldCheck className="w-3 h-3 mr-1" />Pass</Badge>;
+  } else if (status === 'fail') {
+    return <Badge variant="outline" className="bg-red-500/20 text-red-400"><ShieldX className="w-3 h-3 mr-1" />Fail</Badge>;
+  } else if (status === 'missing' || status === 'none') {
+    return <Badge variant="outline" className="bg-amber-500/20 text-amber-400"><ShieldAlert className="w-3 h-3 mr-1" />Missing</Badge>;
+  }
+  return <Badge variant="outline" className="bg-slate-500/20 text-slate-400">N/A</Badge>;
 };
 
 const VendorCard = ({ result }) => {
@@ -188,12 +205,6 @@ const VendorCard = ({ result }) => {
                 <span>ISP: {data.isp}</span>
               </div>
             )}
-            {data.country_code && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                <span>Country: {data.country_code}</span>
-              </div>
-            )}
           </div>
         );
         
@@ -248,12 +259,6 @@ const VendorCard = ({ result }) => {
                 ))}
               </div>
             )}
-            {data.country_code && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                <span>Country: {data.country_code}</span>
-              </div>
-            )}
           </div>
         );
         
@@ -277,18 +282,6 @@ const VendorCard = ({ result }) => {
                   <div className="flex items-center gap-2 text-sm text-slate-300">
                     <Server className="w-4 h-4 text-slate-400" />
                     <span>IP: {latest.ip}</span>
-                  </div>
-                )}
-                {latest.country && (
-                  <div className="flex items-center gap-2 text-sm text-slate-300">
-                    <MapPin className="w-4 h-4 text-slate-400" />
-                    <span>Country: {latest.country}</span>
-                  </div>
-                )}
-                {latest.server && (
-                  <div className="flex items-center gap-2 text-sm text-slate-300">
-                    <Building className="w-4 h-4 text-slate-400" />
-                    <span>Server: {latest.server}</span>
                   </div>
                 )}
               </>
@@ -325,11 +318,6 @@ const VendorCard = ({ result }) => {
                       {vuln}
                     </Badge>
                   ))}
-                  {data.vulns.length > 5 && (
-                    <Badge variant="outline" className="bg-red-500/20 text-red-400 text-xs">
-                      +{data.vulns.length - 5} more
-                    </Badge>
-                  )}
                 </div>
               </div>
             )}
@@ -363,12 +351,6 @@ const VendorCard = ({ result }) => {
                 <span>{data.hostname}</span>
               </div>
             )}
-            {data.timezone && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Clock className="w-4 h-4 text-slate-400" />
-                <span>{data.timezone}</span>
-              </div>
-            )}
           </div>
         );
       
@@ -382,16 +364,6 @@ const VendorCard = ({ result }) => {
                   <p className="text-lg font-bold text-red-400">
                     {data.iocs[0].malware_printable || data.iocs[0].malware || 'Unknown Malware'}
                   </p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-slate-800/50 rounded p-2">
-                    <p className="text-xs text-slate-400">Threat Type</p>
-                    <p className="text-sm text-slate-200">{data.iocs[0].threat_type || 'N/A'}</p>
-                  </div>
-                  <div className="bg-slate-800/50 rounded p-2">
-                    <p className="text-xs text-slate-400">Confidence</p>
-                    <p className="text-sm text-slate-200">{data.iocs[0].confidence_level || 'N/A'}%</p>
-                  </div>
                 </div>
                 {data.iocs[0].tags && data.iocs[0].tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
@@ -430,15 +402,6 @@ const VendorCard = ({ result }) => {
                     <p className="text-sm text-slate-200">{data.file_size ? `${Math.round(data.file_size / 1024)} KB` : 'N/A'}</p>
                   </div>
                 </div>
-                {data.tags && data.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {data.tags.map((tag, idx) => (
-                      <Badge key={idx} variant="outline" className="bg-red-500/20 text-red-400 text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
               </>
             ) : (
               <p className="text-sm text-emerald-400">Hash not found in MalwareBazaar</p>
@@ -467,12 +430,6 @@ const VendorCard = ({ result }) => {
                 <span>{data.org}</span>
               </div>
             )}
-            {data.as && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Server className="w-4 h-4 text-slate-400" />
-                <span>{data.as}</span>
-              </div>
-            )}
             <div className="flex flex-wrap gap-2">
               {data.proxy && <Badge variant="outline" className="bg-amber-500/20 text-amber-400">Proxy</Badge>}
               {data.hosting && <Badge variant="outline" className="bg-cyan-500/20 text-cyan-400">Hosting</Badge>}
@@ -482,6 +439,78 @@ const VendorCard = ({ result }) => {
               <div className="flex items-center gap-2 text-sm text-slate-300">
                 <Building className="w-4 h-4 text-slate-400" />
                 <span>Registrar: {data.registrar}</span>
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'MXToolbox':
+        return (
+          <div className="space-y-3">
+            {data.mx_records && data.mx_records.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 mb-2">MX Records</p>
+                <div className="space-y-1">
+                  {data.mx_records.slice(0, 3).map((mx, idx) => (
+                    <div key={idx} className="bg-slate-800/50 rounded p-2 text-xs text-slate-300 flex justify-between">
+                      <span>{mx.host}</span>
+                      <Badge variant="outline" className="bg-slate-700/50 text-slate-400 text-xs">Priority: {mx.priority}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-slate-800/50 rounded p-2">
+                <p className="text-xs text-slate-400 mb-1">SPF</p>
+                <AuthBadge status={data.spf_record ? 'present' : 'missing'} />
+              </div>
+              <div className="bg-slate-800/50 rounded p-2">
+                <p className="text-xs text-slate-400 mb-1">DMARC</p>
+                <AuthBadge status={data.dmarc_record ? 'present' : 'missing'} />
+              </div>
+            </div>
+            {data.issues && data.issues.length > 0 && (
+              <div>
+                <p className="text-xs text-amber-400 mb-2">Issues Found</p>
+                {data.issues.map((issue, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs text-amber-300">
+                    <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <span>{issue}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'Email Domain':
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+              <AtSign className="w-4 h-4 text-slate-400" />
+              <span>{data.email}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {data.disposable && <Badge variant="outline" className="bg-red-500/20 text-red-400">Disposable</Badge>}
+              {data.free_provider && <Badge variant="outline" className="bg-amber-500/20 text-amber-400">Free Provider</Badge>}
+              {data.business_domain && !data.free_provider && <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400">Business Domain</Badge>}
+            </div>
+            {data.suspicious_patterns && data.suspicious_patterns.length > 0 && (
+              <div>
+                <p className="text-xs text-amber-400 mb-2">Suspicious Patterns</p>
+                {data.suspicious_patterns.map((pattern, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs text-amber-300">
+                    <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <span>{pattern}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {data.domain_age && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span>Created: {data.domain_age}</span>
               </div>
             )}
           </div>
@@ -581,6 +610,27 @@ const AnalysisResults = ({ result }) => {
             </div>
           )}
           
+          {/* Email Security */}
+          {summary.email_security && Object.keys(summary.email_security).length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Email Security</p>
+              <div className="flex gap-4">
+                {summary.email_security.spf && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">SPF:</span>
+                    <AuthBadge status={summary.email_security.spf} />
+                  </div>
+                )}
+                {summary.email_security.dmarc && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">DMARC:</span>
+                    <AuthBadge status={summary.email_security.dmarc} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
           {/* Open Ports */}
           {summary.open_ports && summary.open_ports.length > 0 && (
             <div>
@@ -638,31 +688,6 @@ const AnalysisResults = ({ result }) => {
               </div>
             </div>
           )}
-          
-          {/* Recommendations */}
-          {summary.recommendations && summary.recommendations.length > 0 && (
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Recommendations</p>
-              <div className={`rounded-lg p-4 ${
-                summary.threat_level === 'high' ? 'bg-red-500/10 border border-red-500/20' :
-                summary.threat_level === 'medium' ? 'bg-amber-500/10 border border-amber-500/20' :
-                'bg-emerald-500/10 border border-emerald-500/20'
-              }`}>
-                <ul className="space-y-1">
-                  {summary.recommendations.map((rec, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-sm text-slate-300">
-                      <FileWarning className={`w-4 h-4 ${
-                        summary.threat_level === 'high' ? 'text-red-400' :
-                        summary.threat_level === 'medium' ? 'text-amber-400' :
-                        'text-emerald-400'
-                      }`} />
-                      {rec}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
       
@@ -689,7 +714,170 @@ const AnalysisResults = ({ result }) => {
   );
 };
 
+const EmailHeaderAnalyzer = () => {
+  const [headers, setHeaders] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  
+  const analyzeHeaders = async () => {
+    if (!headers.trim()) {
+      toast.error('Please paste email headers to analyze');
+      return;
+    }
+    
+    setIsLoading(true);
+    setResult(null);
+    
+    try {
+      const response = await axios.post(`${API}/analyze/email-headers`, { headers });
+      setResult(response.data.analysis);
+      toast.success('Email headers analyzed');
+    } catch (error) {
+      toast.error('Failed to analyze email headers');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <div className="space-y-6">
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardHeader>
+          <CardTitle className="text-slate-200 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-cyan-400" />
+            Email Header Analyzer
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            Paste raw email headers to analyze authentication and security indicators
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            value={headers}
+            onChange={(e) => setHeaders(e.target.value)}
+            placeholder="Paste email headers here..."
+            className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-500 min-h-[200px] font-mono text-sm"
+            data-testid="email-headers-input"
+          />
+          <Button
+            onClick={analyzeHeaders}
+            disabled={isLoading || !headers.trim()}
+            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            data-testid="analyze-headers-button"
+          >
+            {isLoading ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyzing...</>
+            ) : (
+              <><Search className="w-4 h-4 mr-2" />Analyze Headers</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+      
+      {result && (
+        <Card className="bg-slate-800/50 border-slate-700/50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 text-slate-200">
+              <Shield className="w-5 h-5 text-cyan-400" />
+              Analysis Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {result.from && (
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-1">From</p>
+                  <p className="text-sm text-slate-200 break-all">{result.from}</p>
+                </div>
+              )}
+              {result.to && (
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-1">To</p>
+                  <p className="text-sm text-slate-200 break-all">{result.to}</p>
+                </div>
+              )}
+              {result.subject && (
+                <div className="bg-slate-800/50 rounded-lg p-3 md:col-span-2">
+                  <p className="text-xs text-slate-400 mb-1">Subject</p>
+                  <p className="text-sm text-slate-200">{result.subject}</p>
+                </div>
+              )}
+              {result.date && (
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-1">Date</p>
+                  <p className="text-sm text-slate-200">{result.date}</p>
+                </div>
+              )}
+              {result.originating_ip && (
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-1">Originating IP</p>
+                  <p className="text-sm text-slate-200 font-mono">{result.originating_ip}</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Authentication */}
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Authentication Results</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-2">SPF</p>
+                  <AuthBadge status={result.authentication?.spf} />
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-2">DKIM</p>
+                  <AuthBadge status={result.authentication?.dkim} />
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-2">DMARC</p>
+                  <AuthBadge status={result.authentication?.dmarc} />
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-2">ARC</p>
+                  <AuthBadge status={result.authentication?.arc} />
+                </div>
+              </div>
+            </div>
+            
+            {/* Warnings */}
+            {result.warnings && result.warnings.length > 0 && (
+              <div>
+                <p className="text-xs text-red-400 uppercase tracking-wider mb-3">Security Warnings</p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 space-y-2">
+                  {result.warnings.map((warning, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-sm text-red-300">
+                      <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      {warning}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Received Chain */}
+            {result.received_chain && result.received_chain.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Received Chain ({result.received_chain.length} hops)</p>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {result.received_chain.map((hop, idx) => (
+                    <div key={idx} className="bg-slate-800/50 rounded p-2 text-xs text-slate-300 font-mono">
+                      <span className="text-slate-500 mr-2">#{idx + 1}</span>
+                      {hop.substring(0, 150)}...
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 const SOCDashboard = () => {
+  const [activeTab, setActiveTab] = useState('ioc');
   const [iocInput, setIocInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [detectedType, setDetectedType] = useState(null);
@@ -782,171 +970,191 @@ const SOCDashboard = () => {
       </header>
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Input Section */}
-        <Card className="bg-slate-800/50 border-slate-700/50 mb-8">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-slate-200 flex items-center gap-2">
-                  <Search className="w-5 h-5 text-cyan-400" />
-                  IOC Analysis
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Enter IP, domain, URL, email, or file hash to analyze
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={bulkMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setBulkMode(!bulkMode)}
-                  className={bulkMode ? "bg-cyan-600 hover:bg-cyan-700" : "border-slate-600 text-slate-300 hover:bg-slate-700"}
-                  data-testid="bulk-mode-toggle"
-                >
-                  Bulk Mode
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="relative">
-              {bulkMode ? (
-                <textarea
-                  value={iocInput}
-                  onChange={handleInputChange}
-                  placeholder="Enter IOCs (one per line, max 20)..."
-                  className="w-full h-32 bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 font-mono text-sm resize-none"
-                  data-testid="ioc-input-bulk"
-                />
-              ) : (
-                <Input
-                  type="text"
-                  value={iocInput}
-                  onChange={handleInputChange}
-                  placeholder="Enter IOC (e.g., 8.8.8.8, google.com, hash...)"
-                  className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-500 focus:ring-cyan-500/50 focus:border-cyan-500/50 h-12 font-mono"
-                  onKeyDown={(e) => e.key === 'Enter' && analyzeIOC()}
-                  data-testid="ioc-input"
-                />
-              )}
-            </div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+          <TabsList className="bg-slate-800/50 border border-slate-700/50">
+            <TabsTrigger value="ioc" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+              <Search className="w-4 h-4 mr-2" />
+              IOC Analysis
+            </TabsTrigger>
+            <TabsTrigger value="email-headers" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+              <FileText className="w-4 h-4 mr-2" />
+              Email Headers
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="ioc" className="mt-6">
+            {/* Input Section */}
+            <Card className="bg-slate-800/50 border-slate-700/50 mb-8">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-slate-200 flex items-center gap-2">
+                      <Search className="w-5 h-5 text-cyan-400" />
+                      IOC Analysis
+                    </CardTitle>
+                    <CardDescription className="text-slate-400">
+                      Enter IP, domain, URL, email, or file hash to analyze
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={bulkMode ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setBulkMode(!bulkMode)}
+                      className={bulkMode ? "bg-cyan-600 hover:bg-cyan-700" : "border-slate-600 text-slate-300 hover:bg-slate-700"}
+                      data-testid="bulk-mode-toggle"
+                    >
+                      Bulk Mode
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="relative">
+                  {bulkMode ? (
+                    <textarea
+                      value={iocInput}
+                      onChange={handleInputChange}
+                      placeholder="Enter IOCs (one per line, max 20)..."
+                      className="w-full h-32 bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 font-mono text-sm resize-none"
+                      data-testid="ioc-input-bulk"
+                    />
+                  ) : (
+                    <Input
+                      type="text"
+                      value={iocInput}
+                      onChange={handleInputChange}
+                      placeholder="Enter IOC (e.g., 8.8.8.8, google.com, user@example.com, hash...)"
+                      className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-500 focus:ring-cyan-500/50 focus:border-cyan-500/50 h-12 font-mono"
+                      onKeyDown={(e) => e.key === 'Enter' && analyzeIOC()}
+                      data-testid="ioc-input"
+                    />
+                  )}
+                </div>
+                
+                {/* Detection Preview */}
+                {detectedType && !bulkMode && (
+                  <div className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50" data-testid="detection-preview">
+                    <div className="p-2 bg-cyan-500/20 rounded">
+                      <IOCTypeIcon category={detectedType.category} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Detected Type</p>
+                      <p className="text-sm font-medium text-slate-200">
+                        {detectedType.ioc_type.toUpperCase()} 
+                        <span className="text-slate-400 font-normal"> ({detectedType.category})</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={analyzeIOC}
+                    disabled={isLoading || !iocInput.trim()}
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white px-6"
+                    data-testid="analyze-button"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4 mr-2" />
+                        Analyze {bulkMode ? 'All' : 'IOC'}
+                      </>
+                    )}
+                  </Button>
+                  
+                  {(analysisResult || bulkResults.length > 0) && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setAnalysisResult(null);
+                        setBulkResults([]);
+                        setIocInput('');
+                        setDetectedType(null);
+                      }}
+                      className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                      data-testid="clear-button"
+                    >
+                      Clear Results
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
             
-            {/* Detection Preview */}
-            {detectedType && !bulkMode && (
-              <div className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50" data-testid="detection-preview">
-                <div className="p-2 bg-cyan-500/20 rounded">
-                  <IOCTypeIcon category={detectedType.category} />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Detected Type</p>
-                  <p className="text-sm font-medium text-slate-200">
-                    {detectedType.ioc_type.toUpperCase()} 
-                    <span className="text-slate-400 font-normal"> ({detectedType.category})</span>
-                  </p>
-                </div>
+            {/* Results Section */}
+            {analysisResult && <AnalysisResults result={analysisResult} />}
+            
+            {/* Bulk Results */}
+            {bulkResults.length > 0 && (
+              <div className="space-y-4" data-testid="bulk-results">
+                <h2 className="text-lg font-semibold text-slate-200">Bulk Analysis Results ({bulkResults.length})</h2>
+                <Accordion type="single" collapsible className="space-y-2">
+                  {bulkResults.map((result, idx) => (
+                    <AccordionItem 
+                      key={idx} 
+                      value={`item-${idx}`}
+                      className="bg-slate-800/50 border border-slate-700/50 rounded-lg overflow-hidden"
+                    >
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-slate-800/80">
+                        <div className="flex items-center gap-3 w-full">
+                          <IOCTypeIcon category={result.category} />
+                          <span className="font-mono text-sm text-slate-200 truncate flex-1 text-left">
+                            {result.ioc}
+                          </span>
+                          <ThreatBadge level={result.summary?.threat_level || 'unknown'} />
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <AnalysisResults result={result} />
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
               </div>
             )}
             
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={analyzeIOC}
-                disabled={isLoading || !iocInput.trim()}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white px-6"
-                data-testid="analyze-button"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4 mr-2" />
-                    Analyze {bulkMode ? 'All' : 'IOC'}
-                  </>
-                )}
-              </Button>
-              
-              {(analysisResult || bulkResults.length > 0) && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAnalysisResult(null);
-                    setBulkResults([]);
-                    setIocInput('');
-                    setDetectedType(null);
-                  }}
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                  data-testid="clear-button"
-                >
-                  Clear Results
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Results Section */}
-        {analysisResult && <AnalysisResults result={analysisResult} />}
-        
-        {/* Bulk Results */}
-        {bulkResults.length > 0 && (
-          <div className="space-y-4" data-testid="bulk-results">
-            <h2 className="text-lg font-semibold text-slate-200">Bulk Analysis Results ({bulkResults.length})</h2>
-            <Accordion type="single" collapsible className="space-y-2">
-              {bulkResults.map((result, idx) => (
-                <AccordionItem 
-                  key={idx} 
-                  value={`item-${idx}`}
-                  className="bg-slate-800/50 border border-slate-700/50 rounded-lg overflow-hidden"
-                >
-                  <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-slate-800/80">
-                    <div className="flex items-center gap-3 w-full">
-                      <IOCTypeIcon category={result.category} />
-                      <span className="font-mono text-sm text-slate-200 truncate flex-1 text-left">
-                        {result.ioc}
-                      </span>
-                      <ThreatBadge level={result.summary?.threat_level || 'unknown'} />
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
-                    <AnalysisResults result={result} />
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
-        )}
-        
-        {/* Empty State */}
-        {!analysisResult && bulkResults.length === 0 && !isLoading && (
-          <div className="text-center py-16" data-testid="empty-state">
-            <div className="inline-flex p-4 bg-slate-800/50 rounded-full mb-4">
-              <Shield className="w-12 h-12 text-slate-600" />
-            </div>
-            <h3 className="text-lg font-medium text-slate-400 mb-2">Ready to Analyze</h3>
-            <p className="text-sm text-slate-500 max-w-md mx-auto">
-              Enter an IOC above to query multiple threat intelligence sources and get consolidated security insights.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 mt-6">
-              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                <Server className="w-3 h-3 mr-1" /> IP Addresses
-              </Badge>
-              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                <Globe className="w-3 h-3 mr-1" /> Domains
-              </Badge>
-              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                <Link2 className="w-3 h-3 mr-1" /> URLs
-              </Badge>
-              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                <Mail className="w-3 h-3 mr-1" /> Emails
-              </Badge>
-              <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                <Hash className="w-3 h-3 mr-1" /> File Hashes
-              </Badge>
-            </div>
-          </div>
-        )}
+            {/* Empty State */}
+            {!analysisResult && bulkResults.length === 0 && !isLoading && (
+              <div className="text-center py-16" data-testid="empty-state">
+                <div className="inline-flex p-4 bg-slate-800/50 rounded-full mb-4">
+                  <Shield className="w-12 h-12 text-slate-600" />
+                </div>
+                <h3 className="text-lg font-medium text-slate-400 mb-2">Ready to Analyze</h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto">
+                  Enter an IOC above to query multiple threat intelligence sources and get consolidated security insights.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 mt-6">
+                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                    <Server className="w-3 h-3 mr-1" /> IP Addresses
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                    <Globe className="w-3 h-3 mr-1" /> Domains
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                    <Link2 className="w-3 h-3 mr-1" /> URLs
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                    <Mail className="w-3 h-3 mr-1" /> Emails
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                    <Hash className="w-3 h-3 mr-1" /> File Hashes
+                  </Badge>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="email-headers" className="mt-6">
+            <EmailHeaderAnalyzer />
+          </TabsContent>
+        </Tabs>
       </main>
       
       {/* Footer */}
@@ -954,7 +1162,7 @@ const SOCDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <p>SOC IOC Analyzer v1.0</p>
-            <p>Powered by VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, GreyNoise, Shodan, ThreatFox, MalwareBazaar</p>
+            <p>VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, GreyNoise, Shodan, ThreatFox, MalwareBazaar, MXToolbox</p>
           </div>
         </div>
       </footer>
