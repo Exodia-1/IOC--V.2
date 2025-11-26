@@ -86,3 +86,7 @@ backend_test.py
 backend_test_results.json
 test_reports/
 tests/
+-e 
+# Environment files
+*.env
+*.env.*
