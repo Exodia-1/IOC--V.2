@@ -354,33 +354,6 @@ const VendorCard = ({ result }) => {
           </div>
         );
       
-      case 'ThreatFox':
-        return (
-          <div className="space-y-3">
-            {data.found && data.iocs && data.iocs.length > 0 ? (
-              <>
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                  <p className="text-xs text-red-400 mb-1">Threat Detected</p>
-                  <p className="text-lg font-bold text-red-400">
-                    {data.iocs[0].malware_printable || data.iocs[0].malware || 'Unknown Malware'}
-                  </p>
-                </div>
-                {data.iocs[0].tags && data.iocs[0].tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {data.iocs[0].tags.map((tag, idx) => (
-                      <Badge key={idx} variant="outline" className="bg-red-500/20 text-red-400 text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-emerald-400">No threats found in ThreatFox database</p>
-            )}
-          </div>
-        );
-      
       case 'MalwareBazaar':
         return (
           <div className="space-y-3">
