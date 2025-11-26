@@ -380,9 +380,9 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
                 classification = data.get('classification')
                 if classification == 'malicious':
                     threat_scores.append(80)
-                    summary['key_findings'].append(f"GreyNoise: Classified as malicious")
+                    summary['key_findings'].append("GreyNoise: Classified as malicious")
                 elif classification == 'benign':
-                    summary['key_findings'].append(f"GreyNoise: Classified as benign")
+                    summary['key_findings'].append("GreyNoise: Classified as benign")
                     summary['tags'].append('Benign (GreyNoise)')
                 if data.get('noise'):
                     summary['tags'].append('Internet Noise')
@@ -406,7 +406,7 @@ def generate_summary(vendor_results: List[VendorResult], ioc: str, ioc_type: str
                     overall = verdicts.get('overall', {})
                     if overall.get('malicious'):
                         threat_scores.append(90)
-                        summary['key_findings'].append(f"URLScan: Flagged as malicious")
+                        summary['key_findings'].append("URLScan: Flagged as malicious")
                     summary['tags'].extend(overall.get('tags', []))
                 if latest.get('country'):
                     summary['geolocation']['country'] = latest.get('country')
