@@ -173,8 +173,8 @@ async def query_abuseipdb(session: aiohttp.ClientSession, ioc: str, ioc_type: st
         }
         params = {
             'ipAddress': ioc,
-            'maxAgeInDays': 90,
-            'verbose': True
+            'maxAgeInDays': '90',
+            'verbose': ''
         }
         
         async with session.get('https://api.abuseipdb.com/api/v2/check', headers=headers, params=params) as response:
