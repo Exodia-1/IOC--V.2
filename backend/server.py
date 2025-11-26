@@ -1090,7 +1090,6 @@ async def analyze_bulk_iocs(request: BulkIOCRequest):
                 query_alienvault(session, ioc, ioc_type, category),
                 query_greynoise(session, ioc, ioc_type, category),
                 query_ipinfo(session, ioc, ioc_type, category),
-                query_threatfox(session, ioc, ioc_type, category),
                 query_malwarebazaar(session, ioc, ioc_type, category),
                 query_whois(session, ioc, ioc_type, category),
                 query_shodan(session, ioc, ioc_type, category),
