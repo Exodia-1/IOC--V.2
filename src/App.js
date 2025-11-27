@@ -96,8 +96,64 @@ const AuthBadge = ({ status }) => {
   return <Badge variant="outline" className="bg-slate-500/20 text-slate-400">N/A</Badge>;
 };
 
-const VendorCard = ({ result }) => {
+const VendorCard = ({ result, ioc, iocType, category }) => {
   const { vendor, status, data, error } = result;
+  
+  // Generate vendor-specific URL for more information
+  const getVendorUrl = () => {
+    const encodedIOC = encodeURIComponent(ioc);
+    
+    switch (vendor) {
+      case 'VirusTotal':
+        if (category === 'ip') return `https://www.virustotal.com/gui/ip-address/${encodedIOC}`;
+        if (category === 'domain') return `https://www.virustotal.com/gui/domain/${encodedIOC}`;
+        if (category === 'url') return `https://www.virustotal.com/gui/url/${btoa(ioc)}/detection`;
+        if (category === 'hash') return `https://www.virustotal.com/gui/file/${encodedIOC}`;
+        return `https://www.virustotal.com/gui/search/${encodedIOC}`;
+        
+      case 'AbuseIPDB':
+        return `https://www.abuseipdb.com/check/${encodedIOC}`;
+        
+      case 'GreyNoise':
+        return `https://viz.greynoise.io/ip/${encodedIOC}`;
+        
+      case 'AlienVault OTX':
+        if (category === 'ip') return `https://otx.alienvault.com/indicator/ip/${encodedIOC}`;
+        if (category === 'domain') return `https://otx.alienvault.com/indicator/domain/${encodedIOC}`;
+        if (category === 'hash') return `https://otx.alienvault.com/indicator/file/${encodedIOC}`;
+        if (category === 'url') return `https://otx.alienvault.com/indicator/url/${encodedIOC}`;
+        return `https://otx.alienvault.com/`;
+        
+      case 'URLScan':
+        return `https://urlscan.io/search/#${encodedIOC}`;
+        
+      case 'Shodan':
+        return `https://www.shodan.io/host/${encodedIOC}`;
+        
+      case 'IPInfo':
+        return `https://ipinfo.io/${encodedIOC}`;
+        
+      case 'WHOIS':
+        if (category === 'ip') return `https://who.is/whois-ip/ip-address/${encodedIOC}`;
+        return `https://who.is/whois/${encodedIOC}`;
+        
+      case 'MalwareBazaar':
+        return `https://bazaar.abuse.ch/browse/`;
+        
+      case 'MXToolbox':
+        const domain = ioc.includes('@') ? ioc.split('@')[1] : ioc;
+        return `https://mxtoolbox.com/SuperTool.aspx?action=mx:${encodeURIComponent(domain)}`;
+        
+      case 'Email Domain':
+        const emailDomain = ioc.split('@')[1];
+        return `https://who.is/whois/${encodeURIComponent(emailDomain)}`;
+        
+      default:
+        return null;
+    }
+  };
+  
+  const vendorUrl = getVendorUrl();
   
   const renderVendorData = () => {
     if (status !== 'success' || !data) {
