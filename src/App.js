@@ -577,7 +577,20 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-medium text-slate-200">{vendor}</CardTitle>
-          <VendorStatusBadge status={status} />
+          <div className="flex items-center gap-2">
+            <VendorStatusBadge status={status} />
+            {vendorUrl && (
+              <a
+                href={vendorUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 hover:bg-slate-700/50 rounded transition-colors"
+                title={`View ${ioc} on ${vendor}`}
+              >
+                <ExternalLink className="w-4 h-4 text-cyan-400 hover:text-cyan-300" />
+              </a>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
