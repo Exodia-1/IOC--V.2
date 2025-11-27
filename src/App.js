@@ -184,20 +184,44 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
                   <span className="text-sm text-slate-500 font-normal">/{total}</span>
                 </p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-3">
-                <p className="text-xs text-slate-400 mb-1">Harmless</p>
-                <p className="text-2xl font-bold text-emerald-400">
-                  {data.harmless_count || 0}
-                  <span className="text-sm text-slate-500 font-normal">/{total}</span>
-                </p>
-              </div>
-              <div className="bg-slate-800/50 rounded-lg p-3">
-                <p className="text-xs text-slate-400 mb-1">Undetected</p>
-                <p className="text-2xl font-bold text-slate-400">
-                  {data.undetected_count || 0}
-                  <span className="text-sm text-slate-500 font-normal">/{total}</span>
-                </p>
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="bg-slate-800/50 rounded-lg p-3 cursor-help">
+                      <p className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+                        Harmless
+                        <Info className="w-3 h-3" />
+                      </p>
+                      <p className="text-2xl font-bold text-emerald-400">
+                        {data.harmless_count || 0}
+                        <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                      </p>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">Engines actively determined this IOC is <strong>safe and benign</strong> (positively identified as harmless)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="bg-slate-800/50 rounded-lg p-3 cursor-help">
+                      <p className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+                        Undetected
+                        <Info className="w-3 h-3" />
+                      </p>
+                      <p className="text-2xl font-bold text-slate-400">
+                        {data.undetected_count || 0}
+                        <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                      </p>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">Engines scanned but <strong>found no threats</strong> (neutral result - not flagged either way)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             {data.country && (
               <div className="flex items-center gap-2 text-sm text-slate-300">
