@@ -36,7 +36,8 @@ import {
   AtSign,
   ShieldCheck,
   ShieldX,
-  ShieldAlert
+  ShieldAlert,
+  ExternalLink
 } from "lucide-react";
 
 const API = '/api';
