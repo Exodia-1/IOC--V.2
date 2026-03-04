@@ -635,38 +635,40 @@ const AnalysisResults = ({ result }) => {
   const { ioc, ioc_type, category, summary, vendor_results, timestamp } = result;
   
   return (
-    <div className="space-y-6" data-testid="analysis-results">
-      {/* Header Section */}
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardContent className="pt-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-slate-700/50 rounded-xl">
+    <div className="space-y-8" data-testid="analysis-results">
+      {/* Modern Header Section with Gradient */}
+      <Card className="bg-gradient-to-br from-slate-800/70 via-slate-800/60 to-slate-900/70 border-slate-700/50 backdrop-blur-sm shadow-2xl overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5"></div>
+        <CardContent className="pt-8 relative">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="p-4 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-2xl shadow-lg ring-2 ring-cyan-500/30">
                 <IOCTypeIcon category={category} />
               </div>
               <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Analyzed IOC</p>
-                <p className="text-lg font-mono text-slate-200 break-all" data-testid="analyzed-ioc-value">{ioc}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className="bg-slate-700/50 text-slate-300 text-xs">
+                <p className="text-xs text-cyan-400 uppercase tracking-wider font-semibold mb-2">Analyzed IOC</p>
+                <p className="text-xl font-mono font-bold text-slate-100 break-all" data-testid="analyzed-ioc-value">{ioc}</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <Badge variant="outline" className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 text-xs border-cyan-500/30 px-3 py-1">
                     {ioc_type.toUpperCase()}
                   </Badge>
-                  <span className="text-xs text-slate-500">
-                    <Clock className="w-3 h-3 inline mr-1" />
+                  <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" />
                     {new Date(timestamp).toLocaleString()}
                   </span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <ThreatBadge level={summary.threat_level} />
               {summary.confidence > 0 && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <Badge variant="outline" className="bg-slate-700/50 text-slate-300">
-                        {summary.confidence}% confidence
-                      </Badge>
+                      <div className="px-4 py-2 bg-slate-700/50 rounded-xl border border-slate-600/50">
+                        <p className="text-xs text-slate-400 mb-0.5">Confidence</p>
+                        <p className="text-lg font-bold text-cyan-400">{summary.confidence}%</p>
+                      </div>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Threat confidence score based on aggregated data</p>
@@ -679,15 +681,18 @@ const AnalysisResults = ({ result }) => {
         </CardContent>
       </Card>
       
-      {/* Summary Section */}
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2 text-slate-200">
-            <Zap className="w-5 h-5 text-cyan-400" />
-            Threat Summary
+      {/* Modern Summary Section */}
+      <Card className="bg-gradient-to-br from-slate-800/70 via-slate-800/60 to-slate-900/70 border-slate-700/50 backdrop-blur-sm shadow-xl overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5"></div>
+        <CardHeader className="relative">
+          <CardTitle className="text-xl flex items-center gap-3 text-slate-100">
+            <div className="p-2 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
+              <Zap className="w-5 h-5 text-purple-400" />
+            </div>
+            Threat Intelligence Summary
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6 relative">
           {/* Key Findings */}
           {summary.key_findings && summary.key_findings.length > 0 && (
             <div>
