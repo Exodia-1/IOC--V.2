@@ -664,9 +664,11 @@ const AnalysisResults = ({ result }) => {
 const SOCDashboard = () => {
   const [activeTab, setActiveTab] = useState('ioc');
   const [iocInput, setIocInput] = useState('');
+  const [emailHeaders, setEmailHeaders] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [detectedType, setDetectedType] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [emailAnalysisResult, setEmailAnalysisResult] = useState(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkResults, setBulkResults] = useState([]);
   
