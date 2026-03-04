@@ -785,13 +785,13 @@ const SOCDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="max-w-3xl">
+                <div className="w-full">
                   {bulkMode ? (
                     <Textarea
                       value={iocInput}
                       onChange={handleInputChange}
                       placeholder="Enter IOCs (one per line, max 20)...\n8.8.8.8\nexample.com\nhttps://suspicious-site.com"
-                      className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-slate-600 font-mono text-sm h-32 resize-none py-3"
+                      className="w-full bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-slate-600 font-mono text-sm h-32 resize-none py-3"
                       data-testid="ioc-input-bulk"
                     />
                   ) : (
@@ -800,7 +800,7 @@ const SOCDashboard = () => {
                       value={iocInput}
                       onChange={handleInputChange}
                       placeholder="Enter IOC (e.g., 8.8.8.8, google.com, user@example.com...)"
-                      className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-slate-600 h-11 font-mono text-sm px-4 py-3"
+                      className="w-full bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-slate-600 h-11 font-mono text-sm px-4 py-3"
                       onKeyDown={(e) => e.key === 'Enter' && analyzeIOC()}
                       data-testid="ioc-input"
                     />
