@@ -73,12 +73,6 @@ const VendorStatusBadge = ({ status }) => {
   return <Badge variant="outline" className="bg-slate-600/50 text-slate-400 border-slate-600 text-xs">{status}</Badge>;
 };
 
-const AuthBadge = ({ status }) => {
-  if (status === 'pass') return <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">✓ Pass</Badge>;
-  if (status === 'fail') return <Badge className="bg-red-500/20 text-red-400 text-xs">✗ Fail</Badge>;
-  return <Badge className="bg-slate-600/50 text-slate-400 text-xs">— N/A</Badge>;
-};
-
 const VendorCard = ({ result, ioc, iocType, category }) => {
   const { vendor, status, data, error } = result;
   
