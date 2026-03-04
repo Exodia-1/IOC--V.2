@@ -598,10 +598,14 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
   };
   
   return (
-    <Card className="bg-slate-800/30 border-slate-700/50" data-testid={`vendor-card-${vendor.toLowerCase().replace(/\s+/g, '-')}`}>
-      <CardHeader className="pb-3">
+    <Card className="bg-gradient-to-br from-slate-800/60 via-slate-800/50 to-slate-900/60 border-slate-700/50 backdrop-blur-sm hover:border-cyan-500/30 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-cyan-500/10 group overflow-hidden" data-testid={`vendor-card-${vendor.toLowerCase().replace(/\s+/g, '-')}`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 to-blue-500/0 group-hover:from-cyan-500/5 group-hover:to-blue-500/5 transition-all duration-300"></div>
+      <CardHeader className="pb-3 relative">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-medium text-slate-200">{vendor}</CardTitle>
+          <CardTitle className="text-base font-semibold text-slate-200 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50"></span>
+            {vendor}
+          </CardTitle>
           <div className="flex items-center gap-2">
             <VendorStatusBadge status={status} />
             {vendorUrl && (
@@ -609,16 +613,16 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
                 href={vendorUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-1.5 hover:bg-slate-700/50 rounded transition-colors"
+                className="p-2 hover:bg-slate-700/50 rounded-xl transition-all duration-200 group/link"
                 title={`View ${ioc} on ${vendor}`}
               >
-                <ExternalLink className="w-4 h-4 text-cyan-400 hover:text-cyan-300" />
+                <ExternalLink className="w-4 h-4 text-cyan-400 group-hover/link:text-cyan-300 transition-colors" />
               </a>
             )}
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="relative">
         {renderVendorData()}
       </CardContent>
     </Card>
