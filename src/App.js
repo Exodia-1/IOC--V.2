@@ -1064,66 +1064,83 @@ const SOCDashboard = () => {
       </header>
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-          <TabsList className="bg-slate-800/50 border border-slate-700/50">
-            <TabsTrigger value="ioc" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+        {/* Modern Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-10">
+          <TabsList className="bg-slate-800/50 border border-slate-700/50 p-1.5 rounded-2xl backdrop-blur-sm shadow-xl">
+            <TabsTrigger 
+              value="ioc" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600 data-[state=active]:text-white rounded-xl transition-all duration-300 data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/25"
+            >
               <Search className="w-4 h-4 mr-2" />
               IOC Analysis
             </TabsTrigger>
-            <TabsTrigger value="email-headers" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+            <TabsTrigger 
+              value="email-headers" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600 data-[state=active]:text-white rounded-xl transition-all duration-300 data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/25"
+            >
               <FileText className="w-4 h-4 mr-2" />
               Email Headers
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="ioc" className="mt-6">
-            {/* Input Section */}
-            <Card className="bg-slate-800/50 border-slate-700/50 mb-8">
-              <CardHeader>
+          <TabsContent value="ioc" className="mt-8">
+            {/* Modern Input Card with Glassmorphism */}
+            <Card className="bg-gradient-to-br from-slate-800/40 via-slate-800/50 to-slate-900/50 border-slate-700/50 backdrop-blur-xl shadow-2xl mb-10 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5"></div>
+              <CardHeader className="relative">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-slate-200 flex items-center gap-2">
-                      <Search className="w-5 h-5 text-cyan-400" />
+                    <CardTitle className="text-slate-100 flex items-center gap-3 text-2xl">
+                      <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl">
+                        <Search className="w-6 h-6 text-cyan-400" />
+                      </div>
                       IOC Analysis
                     </CardTitle>
-                    <CardDescription className="text-slate-400">
-                      Enter IP, domain, URL, email, or file hash to analyze
+                    <CardDescription className="text-slate-400 mt-2 text-base">
+                      Enter IP addresses, domains, URLs, emails, or file hashes for comprehensive threat analysis
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <Button
                       variant={bulkMode ? "default" : "outline"}
                       size="sm"
                       onClick={() => setBulkMode(!bulkMode)}
-                      className={bulkMode ? "bg-cyan-600 hover:bg-cyan-700" : "border-slate-600 text-slate-300 hover:bg-slate-700"}
+                      className={bulkMode 
+                        ? "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-lg shadow-cyan-500/25 border-0" 
+                        : "border-slate-600 text-slate-300 hover:bg-slate-700/50 hover:border-cyan-500/50"}
                       data-testid="bulk-mode-toggle"
                     >
+                      {bulkMode ? <CheckCircle className="w-4 h-4 mr-2" /> : null}
                       Bulk Mode
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6 relative">
                 <div className="relative">
                   {bulkMode ? (
                     <textarea
                       value={iocInput}
                       onChange={handleInputChange}
-                      placeholder="Enter IOCs (one per line, max 20)..."
-                      className="w-full h-32 bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 font-mono text-sm resize-none"
+                      placeholder="Enter IOCs (one per line, max 20)...&#10;8.8.8.8&#10;example.com&#10;https://suspicious-site.com"
+                      className="w-full h-40 bg-slate-900/80 border-2 border-slate-700/50 hover:border-cyan-500/50 focus:border-cyan-500 rounded-2xl px-6 py-4 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 font-mono text-sm resize-none transition-all duration-300 shadow-inner"
                       data-testid="ioc-input-bulk"
                     />
                   ) : (
-                    <Input
-                      type="text"
-                      value={iocInput}
-                      onChange={handleInputChange}
-                      placeholder="Enter IOC (e.g., 8.8.8.8, google.com, user@example.com, hash...)"
-                      className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-500 focus:ring-cyan-500/50 focus:border-cyan-500/50 h-12 font-mono"
-                      onKeyDown={(e) => e.key === 'Enter' && analyzeIOC()}
-                      data-testid="ioc-input"
-                    />
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        value={iocInput}
+                        onChange={handleInputChange}
+                        placeholder="Enter IOC (e.g., 8.8.8.8, google.com, user@example.com, hash...)"
+                        className="bg-slate-900/80 border-2 border-slate-700/50 hover:border-cyan-500/50 focus:border-cyan-500 text-slate-200 placeholder:text-slate-500 focus:ring-4 focus:ring-cyan-500/20 h-16 font-mono text-base rounded-2xl px-6 transition-all duration-300 shadow-inner"
+                        onKeyDown={(e) => e.key === 'Enter' && analyzeIOC()}
+                        data-testid="ioc-input"
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <Search className="w-5 h-5 text-slate-500" />
+                      </div>
+                    </div>
                   )}
                 </div>
                 
