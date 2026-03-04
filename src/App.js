@@ -489,13 +489,28 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
         
       default:
         return (
-          <div className="text-xs text-slate-400 space-y-1">
-            {Object.entries(data).slice(0, 5).map(([key, value]) => (
-              <div key={key}>
-                <span className="text-slate-500">{key}:</span>{' '}
-                <span className="text-slate-300">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-              </div>
-            ))}
+          <div className="text-xs text-slate-400 space-y-1.5">
+            {Object.entries(data).slice(0, 6).map(([key, value]) => {
+              // Skip complex objects and arrays
+              if (typeof value === 'object' && value !== null) {
+                if (Array.isArray(value) && value.length > 0) {
+                  return (
+                    <div key={key}>
+                      <span className="text-slate-500 capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
+                      <span className="text-slate-300">{value.slice(0, 3).join(', ')}</span>
+                    </div>
+                  );
+                }
+                return null;
+              }
+              // Show simple values
+              return (
+                <div key={key}>
+                  <span className="text-slate-500 capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
+                  <span className="text-slate-300">{String(value).substring(0, 100)}</span>
+                </div>
+              );
+            })}
           </div>
         );
     }
