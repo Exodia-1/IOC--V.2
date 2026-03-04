@@ -266,6 +266,121 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
           </div>
         );
         
+      case 'URLScan':
+        return (
+          <div className="space-y-2">
+            {data.total_results !== undefined && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total Results</span>
+                <span className="text-sm font-semibold text-slate-200">{data.total_results}</span>
+              </div>
+            )}
+            {data.latest_scan && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-slate-400">Latest Scan</p>
+                {typeof data.latest_scan === 'string' ? (
+                  <p className="text-xs text-slate-300 break-all">{data.latest_scan}</p>
+                ) : (
+                  <div className="space-y-1">
+                    {data.latest_scan.domain && (
+                      <div className="text-xs">
+                        <span className="text-slate-500">Domain:</span>{' '}
+                        <span className="text-slate-300 font-mono">{data.latest_scan.domain}</span>
+                      </div>
+                    )}
+                    {data.latest_scan.ip && (
+                      <div className="text-xs">
+                        <span className="text-slate-500">IP:</span>{' '}
+                        <span className="text-slate-300 font-mono">{data.latest_scan.ip}</span>
+                      </div>
+                    )}
+                    {data.latest_scan.country && (
+                      <div className="text-xs">
+                        <span className="text-slate-500">Country:</span>{' '}
+                        <span className="text-slate-300">{data.latest_scan.country}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'WHOIS':
+        return (
+          <div className="space-y-2 text-xs">
+            {data.registrar && (
+              <div>
+                <span className="text-slate-400">Registrar:</span>{' '}
+                <span className="text-slate-300">{data.registrar}</span>
+              </div>
+            )}
+            {data.creation_date && (
+              <div>
+                <span className="text-slate-400">Created:</span>{' '}
+                <span className="text-slate-300">{data.creation_date}</span>
+              </div>
+            )}
+            {data.expiration_date && (
+              <div>
+                <span className="text-slate-400">Expires:</span>{' '}
+                <span className="text-slate-300">{data.expiration_date}</span>
+              </div>
+            )}
+            {data.name_servers && Array.isArray(data.name_servers) && data.name_servers.length > 0 && (
+              <div>
+                <p className="text-slate-400 mb-1">Name Servers:</p>
+                <div className="space-y-0.5 ml-2">
+                  {data.name_servers.slice(0, 4).map((ns, idx) => (
+                    <p key={idx} className="text-slate-300 font-mono text-xs">• {ns}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'Shodan':
+        return (
+          <div className="space-y-2">
+            {data.hostnames && data.hostnames.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Hostnames</p>
+                <div className="space-y-0.5">
+                  {data.hostnames.slice(0, 3).map((hostname, idx) => (
+                    <p key={idx} className="text-xs text-slate-300 font-mono">• {hostname}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+            {data.ports && data.ports.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Open Ports</p>
+                <div className="flex flex-wrap gap-1">
+                  {data.ports.slice(0, 8).map((port, idx) => (
+                    <Badge key={idx} variant="outline" className="bg-slate-700/30 text-slate-300 text-xs border-slate-600">
+                      {port}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {data.org && (
+              <div className="text-xs">
+                <span className="text-slate-400">Organization:</span>{' '}
+                <span className="text-slate-300">{data.org}</span>
+              </div>
+            )}
+            {data.country && (
+              <div className="text-xs">
+                <span className="text-slate-400">Country:</span>{' '}
+                <span className="text-slate-300">{data.country}</span>
+              </div>
+            )}
+          </div>
+        );
+        
       case 'AlienVault OTX':
         return (
           <div className="space-y-2">
