@@ -558,7 +558,7 @@ const SOCDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
+                <div className="max-w-3xl">
                   {bulkMode ? (
                     <Textarea
                       value={iocInput}
