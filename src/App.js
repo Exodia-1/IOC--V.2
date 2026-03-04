@@ -792,11 +792,13 @@ const AnalysisResults = ({ result }) => {
         </CardHeader>
         <CardContent>
           <div className="columns-1 md:columns-2 xl:columns-3 gap-4 space-y-4">
-            {vendor_results.map((result, idx) => (
-              <div key={idx} className="break-inside-avoid">
-                <VendorCard result={result} ioc={ioc} iocType={ioc_type} category={category} />
-              </div>
-            ))}
+            {vendor_results
+              .filter(result => result.status !== 'unsupported')
+              .map((result, idx) => (
+                <div key={idx} className="break-inside-avoid">
+                  <VendorCard result={result} ioc={ioc} iocType={ioc_type} category={category} />
+                </div>
+              ))}
           </div>
         </CardContent>
       </Card>
