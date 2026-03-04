@@ -157,6 +157,8 @@ def parse_email_headers(headers_text: str) -> Dict[str, Any]:
     return result
 
 async def query_virustotal(session, ioc, ioc_type, category):
+    if not VIRUSTOTAL_API_KEY:
+        return VendorResult(vendor='VirusTotal', status='error', error='API key not configured')
     try:
         headers = {'x-apikey': VIRUSTOTAL_API_KEY}
         if category == 'ip': url = f'https://www.virustotal.com/api/v3/ip_addresses/{ioc}'
@@ -164,15 +166,25 @@ async def query_virustotal(session, ioc, ioc_type, category):
         elif category == 'hash': url = f'https://www.virustotal.com/api/v3/files/{ioc}'
         elif category == 'email': url = f'https://www.virustotal.com/api/v3/domains/{ioc.split("@")[1]}'
         else: return VendorResult(vendor='VirusTotal', status='unsupported')
-        async with session.get(url, headers=headers) as resp:
+        async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
             if resp.status == 200:
                 data = await resp.json()
                 attrs = data.get('data', {}).get('attributes', {})
                 stats = attrs.get('last_analysis_stats', {})
                 total = sum([stats.get('malicious', 0), stats.get('suspicious', 0), stats.get('harmless', 0), stats.get('undetected', 0)])
                 return VendorResult(vendor='VirusTotal', status='success', data={'malicious_count': stats.get('malicious', 0), 'suspicious_count': stats.get('suspicious', 0), 'harmless_count': stats.get('harmless', 0), 'undetected_count': stats.get('undetected', 0), 'total_engines': total, 'country': attrs.get('country'), 'as_owner': attrs.get('as_owner')})
-            return VendorResult(vendor='VirusTotal', status='not_found' if resp.status == 404 else 'error')
-    except Exception as e: return VendorResult(vendor='VirusTotal', status='error', error=str(e))
+            elif resp.status == 404:
+                return VendorResult(vendor='VirusTotal', status='not_found')
+            elif resp.status == 401:
+                return VendorResult(vendor='VirusTotal', status='error', error='Invalid API key')
+            elif resp.status == 429:
+                return VendorResult(vendor='VirusTotal', status='error', error='Rate limit exceeded')
+            else:
+                return VendorResult(vendor='VirusTotal', status='error', error=f'HTTP {resp.status}')
+    except asyncio.TimeoutError:
+        return VendorResult(vendor='VirusTotal', status='error', error='Request timeout')
+    except Exception as e: 
+        return VendorResult(vendor='VirusTotal', status='error', error=str(e))
 
 async def query_abuseipdb(session, ioc, ioc_type, category):
     if category != 'ip': return VendorResult(vendor='AbuseIPDB', status='unsupported')
