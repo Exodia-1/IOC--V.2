@@ -29,13 +29,13 @@ ALIENVAULT_API_KEY = os.environ.get('ALIENVAULT_API_KEY', '')
 GREYNOISE_API_KEY = os.environ.get('GREYNOISE_API_KEY', '')
 
 IOC_PATTERNS = {
-    'ipv4': r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
-    'md5': r'^[a-fA-F0-9]{32}$',
-    'sha1': r'^[a-fA-F0-9]{40}$',
-    'sha256': r'^[a-fA-F0-9]{64}$',
-    'email': r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-    'url': r'^https?://[^\s/$.?#].[^\s]*$',
-    'domain': r'^(?!https?://)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$'
+    'ipv4': r'(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)',
+    'md5': r'[a-fA-F0-9]{32}',
+    'sha1': r'[a-fA-F0-9]{40}',
+    'sha256': r'[a-fA-F0-9]{64}',
+    'email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+    'url_with_protocol': r'(?:https?|ftp)://[^\s/$.?#].[^\s]*',
+    'domain': r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}'
 }
 
 class IOCRequest(BaseModel):
@@ -62,15 +62,59 @@ class IOCAnalysisResult(BaseModel):
     vendor_results: List[VendorResult]
     summary: Dict[str, Any]
 
-def detect_ioc_type(ioc: str) -> tuple:
+def normalize_ioc(ioc: str) -> str:
+    """Normalize and clean the IOC input"""
     ioc = ioc.strip()
-    if re.match(IOC_PATTERNS['md5'], ioc): return 'md5', 'hash'
-    if re.match(IOC_PATTERNS['sha1'], ioc): return 'sha1', 'hash'
-    if re.match(IOC_PATTERNS['sha256'], ioc): return 'sha256', 'hash'
-    if re.match(IOC_PATTERNS['ipv4'], ioc): return 'ipv4', 'ip'
-    if re.match(IOC_PATTERNS['email'], ioc): return 'email', 'email'
-    if re.match(IOC_PATTERNS['url'], ioc): return 'url', 'url'
-    if re.match(IOC_PATTERNS['domain'], ioc): return 'domain', 'domain'
+    
+    # Remove common prefixes that users might include
+    ioc = re.sub(r'^(hxxp|hxxps)://', 'http://', ioc, flags=re.IGNORECASE)
+    ioc = re.sub(r'\[(\.|:)\]', r'\1', ioc)  # Defanged URLs: example[.]com -> example.com
+    ioc = re.sub(r'\[\.\]', '.', ioc)
+    
+    return ioc
+
+def detect_ioc_type(ioc: str) -> tuple:
+    """Detect IOC type with improved flexibility"""
+    ioc = normalize_ioc(ioc)
+    
+    # Check for hashes first (most specific)
+    if re.fullmatch(IOC_PATTERNS['sha256'], ioc): 
+        return 'sha256', 'hash'
+    if re.fullmatch(IOC_PATTERNS['sha1'], ioc): 
+        return 'sha1', 'hash'
+    if re.fullmatch(IOC_PATTERNS['md5'], ioc): 
+        return 'md5', 'hash'
+    
+    # Check for email
+    if re.fullmatch(IOC_PATTERNS['email'], ioc): 
+        return 'email', 'email'
+    
+    # Check for IP (including private IPs)
+    ip_match = re.fullmatch(IOC_PATTERNS['ipv4'], ioc)
+    if ip_match:
+        return 'ipv4', 'ip'
+    
+    # Check for URL (with or without protocol)
+    # If it has http/https/ftp, it's definitely a URL
+    if re.match(IOC_PATTERNS['url_with_protocol'], ioc, re.IGNORECASE):
+        return 'url', 'url'
+    
+    # If it looks like domain.com/path, treat as URL
+    if '/' in ioc and re.search(IOC_PATTERNS['domain'], ioc):
+        # Add http:// if missing for processing
+        if not ioc.startswith(('http://', 'https://', 'ftp://')):
+            ioc = 'http://' + ioc
+        return 'url', 'url'
+    
+    # Check for domain (no protocol, no path)
+    if re.fullmatch(IOC_PATTERNS['domain'], ioc):
+        return 'domain', 'domain'
+    
+    # Last attempt: extract IP from string
+    ip_in_string = re.search(IOC_PATTERNS['ipv4'], ioc)
+    if ip_in_string:
+        return 'ipv4', 'ip'
+    
     return 'unknown', 'unknown'
 
 def parse_email_headers(headers_text: str) -> Dict[str, Any]:
