@@ -1144,38 +1144,42 @@ const SOCDashboard = () => {
                   )}
                 </div>
                 
-                {/* Detection Preview */}
+                {/* Modern Detection Preview */}
                 {detectedType && !bulkMode && (
-                  <div className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50" data-testid="detection-preview">
-                    <div className="p-2 bg-cyan-500/20 rounded">
+                  <div className="flex items-center gap-4 p-5 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 rounded-2xl border border-cyan-500/20 backdrop-blur-sm shadow-lg" data-testid="detection-preview">
+                    <div className="p-3 bg-gradient-to-br from-cyan-500/30 to-blue-500/30 rounded-xl shadow-lg ring-2 ring-cyan-500/50">
                       <IOCTypeIcon category={detectedType.category} />
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Detected Type</p>
-                      <p className="text-sm font-medium text-slate-200">
+                    <div className="flex-1">
+                      <p className="text-xs text-cyan-400 font-semibold uppercase tracking-wider mb-1">Detected Type</p>
+                      <p className="text-base font-bold text-slate-100">
                         {detectedType.ioc_type.toUpperCase()} 
-                        <span className="text-slate-400 font-normal"> ({detectedType.category})</span>
+                        <span className="text-slate-400 font-normal ml-2">({detectedType.category})</span>
                       </p>
+                    </div>
+                    <div className="px-4 py-2 bg-emerald-500/20 rounded-xl border border-emerald-500/30">
+                      <CheckCircle className="w-5 h-5 text-emerald-400" />
                     </div>
                   </div>
                 )}
                 
-                <div className="flex items-center gap-3">
+                {/* Modern Action Buttons */}
+                <div className="flex items-center gap-4">
                   <Button
                     onClick={analyzeIOC}
                     disabled={isLoading || !iocInput.trim()}
-                    className="bg-cyan-600 hover:bg-cyan-700 text-white px-6"
+                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-6 text-base font-semibold rounded-2xl shadow-2xl shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border-0 flex-1"
                     data-testid="analyze-button"
                   >
                     {isLoading ? (
                       <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                         Analyzing...
                       </>
                     ) : (
                       <>
-                        <Search className="w-4 h-4 mr-2" />
-                        Analyze {bulkMode ? 'All' : 'IOC'}
+                        <Search className="w-5 h-5 mr-2" />
+                        Analyze {bulkMode ? 'All IOCs' : 'IOC'}
                       </>
                     )}
                   </Button>
@@ -1189,9 +1193,10 @@ const SOCDashboard = () => {
                         setIocInput('');
                         setDetectedType(null);
                       }}
-                      className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                      className="border-2 border-slate-600 hover:border-red-500/50 text-slate-300 hover:text-red-400 hover:bg-red-500/10 px-6 py-6 rounded-2xl transition-all duration-300"
                       data-testid="clear-button"
                     >
+                      <XCircle className="w-5 h-5 mr-2" />
                       Clear Results
                     </Button>
                   )}
