@@ -1035,33 +1035,35 @@ const SOCDashboard = () => {
   };
   
   return (
-    <div className="min-h-screen bg-slate-900" data-testid="soc-dashboard">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" data-testid="soc-dashboard">
       <Toaster position="top-right" theme="dark" richColors />
       
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      {/* Modern Header with Gradient */}
+      <header className="border-b border-slate-800/50 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl sticky top-0 z-50 shadow-2xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-cyan-500/20 rounded-lg">
-                <Shield className="w-6 h-6 text-cyan-400" />
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-2xl shadow-lg ring-1 ring-cyan-500/30">
+                <Shield className="w-8 h-8 text-cyan-400" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-slate-100 font-['Space_Grotesk']">SOC IOC Analyzer</h1>
-                <p className="text-xs text-slate-400">Threat Intelligence Hub</p>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  SOC IOC Analyzer
+                </h1>
+                <p className="text-sm text-slate-400 font-medium">Advanced Threat Intelligence Platform</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                <span className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></span>
-                Online
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-emerald-400 border-emerald-500/40 px-4 py-1.5 shadow-lg">
+                <span className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse shadow-lg shadow-emerald-400/50"></span>
+                Live
               </Badge>
             </div>
           </div>
         </div>
       </header>
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
           <TabsList className="bg-slate-800/50 border border-slate-700/50">
