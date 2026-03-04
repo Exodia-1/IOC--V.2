@@ -1,23 +1,18 @@
 import { useState } from "react";
 import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
-import { Toaster, toast } from "sonner";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "components/ui/card";
-import { Button } from "components/ui/button";
+import { toast, Toaster } from "sonner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "components/ui/tabs";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "components/ui/card";
 import { Input } from "components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
+import { Button } from "components/ui/button";
 import { Badge } from "components/ui/badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "components/ui/accordion";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "components/ui/tooltip";
-import { Progress } from "components/ui/progress";
 import { Textarea } from "components/ui/textarea";
 import { 
   Shield, 
   Search, 
   AlertTriangle, 
   CheckCircle,
-  XCircle,
   Globe, 
   Server, 
   Mail, 
@@ -38,69 +33,61 @@ import {
   ShieldCheck,
   ShieldX,
   ShieldAlert,
-  ExternalLink
+  ExternalLink,
+  TrendingUp
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "components/ui/tooltip";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "components/ui/accordion";
+import { Progress } from "components/ui/progress";
 
 const API = '/api';
 
-const IOCTypeIcon = ({ category }) => {
-  switch (category) {
-    case 'ip': return <Server className="w-4 h-4" />;
-    case 'domain': return <Globe className="w-4 h-4" />;
-    case 'url': return <Link2 className="w-4 h-4" />;
-    case 'email': return <Mail className="w-4 h-4" />;
-    case 'hash': return <Hash className="w-4 h-4" />;
-    default: return <AlertCircle className="w-4 h-4" />;
+const IOCTypeIcon = ({ category, size = "w-5 h-5" }) => {
+  switch(category) {
+    case 'ip': return <Server className={size} />;
+    case 'domain': return <Globe className={size} />;
+    case 'url': return <Link2 className={size} />;
+    case 'email': return <Mail className={size} />;
+    case 'hash': return <Hash className={size} />;
+    default: return <Shield className={size} />;
   }
 };
 
 const ThreatBadge = ({ level }) => {
-  const config = {
-    high: { className: "bg-red-500/20 text-red-400 border-red-500/30", icon: AlertTriangle },
-    medium: { className: "bg-amber-500/20 text-amber-400 border-amber-500/30", icon: AlertCircle },
-    low: { className: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30", icon: Info },
-    clean: { className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", icon: CheckCircle },
-    unknown: { className: "bg-slate-500/20 text-slate-400 border-slate-500/30", icon: AlertCircle }
+  const configs = {
+    'critical': { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', icon: ShieldX },
+    'high': { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30', icon: ShieldAlert },
+    'medium': { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/30', icon: AlertTriangle },
+    'low': { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30', icon: Info },
+    'clean': { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', icon: ShieldCheck },
   };
-  
-  const { className, icon: Icon } = config[level] || config.unknown;
+  const config = configs[level] || configs['low'];
+  const Icon = config.icon;
   
   return (
-    <Badge variant="outline" className={`${className} font-semibold uppercase tracking-wide`} data-testid={`threat-badge-${level}`}>
-      <Icon className="w-3 h-3 mr-1" />
-      {level}
+    <Badge variant="outline" className={`${config.bg} ${config.text} ${config.border} border px-3 py-1.5 text-sm font-medium`}>
+      <Icon className="w-3.5 h-3.5 mr-1.5" />
+      {level.charAt(0).toUpperCase() + level.slice(1)} Risk
     </Badge>
   );
 };
 
 const VendorStatusBadge = ({ status }) => {
-  const config = {
-    success: { className: "bg-emerald-500/20 text-emerald-400", label: "Success" },
-    not_found: { className: "bg-slate-500/20 text-slate-400", label: "Not Found" },
-    unsupported: { className: "bg-slate-600/20 text-slate-500", label: "N/A" },
-    error: { className: "bg-red-500/20 text-red-400", label: "Error" }
-  };
-  
-  const { className, label } = config[status] || config.error;
-  
-  return <Badge variant="outline" className={className}>{label}</Badge>;
+  if (status === 'success') return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-xs">Active</Badge>;
+  if (status === 'error') return <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30 text-xs">Error</Badge>;
+  if (status === 'not_found') return <Badge variant="outline" className="bg-slate-600/50 text-slate-400 border-slate-600 text-xs">No Data</Badge>;
+  return <Badge variant="outline" className="bg-slate-600/50 text-slate-400 border-slate-600 text-xs">{status}</Badge>;
 };
 
 const AuthBadge = ({ status }) => {
-  if (status === 'pass' || status === 'present') {
-    return <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400"><ShieldCheck className="w-3 h-3 mr-1" />Pass</Badge>;
-  } else if (status === 'fail') {
-    return <Badge variant="outline" className="bg-red-500/20 text-red-400"><ShieldX className="w-3 h-3 mr-1" />Fail</Badge>;
-  } else if (status === 'missing' || status === 'none') {
-    return <Badge variant="outline" className="bg-amber-500/20 text-amber-400"><ShieldAlert className="w-3 h-3 mr-1" />Missing</Badge>;
-  }
-  return <Badge variant="outline" className="bg-slate-500/20 text-slate-400">N/A</Badge>;
+  if (status === 'pass') return <Badge className="bg-emerald-500/20 text-emerald-400 text-xs">✓ Pass</Badge>;
+  if (status === 'fail') return <Badge className="bg-red-500/20 text-red-400 text-xs">✗ Fail</Badge>;
+  return <Badge className="bg-slate-600/50 text-slate-400 text-xs">— N/A</Badge>;
 };
 
 const VendorCard = ({ result, ioc, iocType, category }) => {
   const { vendor, status, data, error } = result;
   
-  // Generate vendor-specific URL for more information
   const getVendorUrl = () => {
     const encodedIOC = encodeURIComponent(ioc);
     
@@ -111,44 +98,33 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
         if (category === 'url') return `https://www.virustotal.com/gui/url/${btoa(ioc)}/detection`;
         if (category === 'hash') return `https://www.virustotal.com/gui/file/${encodedIOC}`;
         return `https://www.virustotal.com/gui/search/${encodedIOC}`;
-        
       case 'AbuseIPDB':
         return `https://www.abuseipdb.com/check/${encodedIOC}`;
-        
       case 'GreyNoise':
         return `https://viz.greynoise.io/ip/${encodedIOC}`;
-        
       case 'AlienVault OTX':
         if (category === 'ip') return `https://otx.alienvault.com/indicator/ip/${encodedIOC}`;
         if (category === 'domain') return `https://otx.alienvault.com/indicator/domain/${encodedIOC}`;
         if (category === 'hash') return `https://otx.alienvault.com/indicator/file/${encodedIOC}`;
         if (category === 'url') return `https://otx.alienvault.com/indicator/url/${encodedIOC}`;
         return `https://otx.alienvault.com/`;
-        
       case 'URLScan':
         return `https://urlscan.io/search/#${encodedIOC}`;
-        
       case 'Shodan':
         return `https://www.shodan.io/host/${encodedIOC}`;
-        
       case 'IPInfo':
         return `https://ipinfo.io/${encodedIOC}`;
-        
       case 'WHOIS':
         if (category === 'ip') return `https://who.is/whois-ip/ip-address/${encodedIOC}`;
         return `https://who.is/whois/${encodedIOC}`;
-        
       case 'MalwareBazaar':
         return `https://bazaar.abuse.ch/browse/`;
-        
       case 'MXToolbox':
         const domain = ioc.includes('@') ? ioc.split('@')[1] : ioc;
         return `https://mxtoolbox.com/SuperTool.aspx?action=mx:${encodeURIComponent(domain)}`;
-        
       case 'Email Domain':
         const emailDomain = ioc.split('@')[1];
         return `https://who.is/whois/${encodeURIComponent(emailDomain)}`;
-        
       default:
         return null;
     }
@@ -157,10 +133,19 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
   const vendorUrl = getVendorUrl();
   
   const renderVendorData = () => {
+    if (status === 'error') {
+      return (
+        <div className="flex items-center gap-2 text-sm text-red-400/80">
+          <AlertCircle className="w-4 h-4" />
+          <p>{error || 'Failed to fetch data'}</p>
+        </div>
+      );
+    }
+    
     if (status !== 'success' || !data) {
       return (
-        <p className="text-slate-400 text-sm">
-          {error || (status === 'not_found' ? 'No data found for this IOC' : 'Data not available')}
+        <p className="text-sm text-slate-500">
+          {error || (status === 'not_found' ? 'No data available for this IOC' : 'Data not available')}
         </p>
       );
     }
@@ -170,70 +155,64 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
         const total = data.total_engines || 0;
         return (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-800/50 rounded-lg p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-slate-800/30 rounded-lg p-2.5">
                 <p className="text-xs text-slate-400 mb-1">Malicious</p>
-                <p className="text-2xl font-bold text-red-400">
+                <p className="text-lg font-semibold text-red-400">
                   {data.malicious_count || 0}
-                  <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                  <span className="text-xs text-slate-500 font-normal ml-1">/{total}</span>
                 </p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-3">
+              <div className="bg-slate-800/30 rounded-lg p-2.5">
                 <p className="text-xs text-slate-400 mb-1">Suspicious</p>
-                <p className="text-2xl font-bold text-amber-400">
+                <p className="text-lg font-semibold text-orange-400">
                   {data.suspicious_count || 0}
-                  <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                  <span className="text-xs text-slate-500 font-normal ml-1">/{total}</span>
                 </p>
               </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="bg-slate-800/50 rounded-lg p-3 cursor-help">
+                    <div className="bg-slate-800/30 rounded-lg p-2.5 cursor-help">
                       <p className="text-xs text-slate-400 mb-1 flex items-center gap-1">
                         Harmless
                         <Info className="w-3 h-3" />
                       </p>
-                      <p className="text-2xl font-bold text-emerald-400">
+                      <p className="text-lg font-semibold text-emerald-400">
                         {data.harmless_count || 0}
-                        <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                        <span className="text-xs text-slate-500 font-normal ml-1">/{total}</span>
                       </p>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    <p className="text-xs">Engines actively determined this IOC is <strong>safe and benign</strong> (positively identified as harmless)</p>
+                    <p className="text-xs">Engines actively determined this IOC is <strong>safe and benign</strong></p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="bg-slate-800/50 rounded-lg p-3 cursor-help">
+                    <div className="bg-slate-800/30 rounded-lg p-2.5 cursor-help">
                       <p className="text-xs text-slate-400 mb-1 flex items-center gap-1">
                         Undetected
                         <Info className="w-3 h-3" />
                       </p>
-                      <p className="text-2xl font-bold text-slate-400">
+                      <p className="text-lg font-semibold text-slate-400">
                         {data.undetected_count || 0}
-                        <span className="text-sm text-slate-500 font-normal">/{total}</span>
+                        <span className="text-xs text-slate-500 font-normal ml-1">/{total}</span>
                       </p>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    <p className="text-xs">Engines scanned but <strong>found no threats</strong> (neutral result - not flagged either way)</p>
+                    <p className="text-xs">Engines scanned but <strong>found no threats</strong> (neutral result)</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
-            {data.country && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                <span>Country: {data.country}</span>
-              </div>
-            )}
-            {data.as_owner && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Building className="w-4 h-4 text-slate-400" />
-                <span>ASN: {data.as_owner}</span>
+            {(data.country || data.as_owner) && (
+              <div className="text-xs text-slate-400 space-y-1 border-t border-slate-700/50 pt-2">
+                {data.country && <p>Country: {data.country}</p>}
+                {data.as_owner && <p>Owner: {data.as_owner}</p>}
               </div>
             )}
           </div>
@@ -241,388 +220,109 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
         
       case 'AbuseIPDB':
         return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <p className="text-xs text-slate-400 mb-1">Abuse Confidence Score</p>
-                <div className="flex items-center gap-3">
-                  <Progress 
-                    value={data.abuse_confidence_score || 0} 
-                    className="flex-1 h-2" 
-                  />
-                  <span className={`text-lg font-bold ${
-                    (data.abuse_confidence_score || 0) > 50 ? 'text-red-400' : 
-                    (data.abuse_confidence_score || 0) > 20 ? 'text-amber-400' : 'text-emerald-400'
-                  }`}>
-                    {data.abuse_confidence_score || 0}%
-                  </span>
-                </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">Confidence Score</span>
+              <span className="text-sm font-semibold text-slate-200">{data.abuse_confidence_score}%</span>
+            </div>
+            <Progress value={data.abuse_confidence_score} className="h-1.5" />
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <p className="text-slate-400">Reports</p>
+                <p className="text-slate-200 font-medium">{data.total_reports || 0}</p>
+              </div>
+              <div>
+                <p className="text-slate-400">Distinct Users</p>
+                <p className="text-slate-200 font-medium">{data.num_distinct_users || 0}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-800/50 rounded-lg p-3">
-                <p className="text-xs text-slate-400 mb-1">Total Reports</p>
-                <p className="text-xl font-bold text-slate-200">{data.total_reports || 0}</p>
-              </div>
-              <div className="bg-slate-800/50 rounded-lg p-3">
-                <p className="text-xs text-slate-400 mb-1">Distinct Users</p>
-                <p className="text-xl font-bold text-slate-200">{data.num_distinct_users || 0}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {data.is_tor && <Badge variant="outline" className="bg-purple-500/20 text-purple-400">TOR Exit Node</Badge>}
-              {data.is_whitelisted && <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400">Whitelisted</Badge>}
-            </div>
-            {data.isp && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Building className="w-4 h-4 text-slate-400" />
-                <span>ISP: {data.isp}</span>
-              </div>
-            )}
+            {data.country_code && <p className="text-xs text-slate-400">Country: {data.country_code}</p>}
           </div>
         );
         
       case 'GreyNoise':
         return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <p className="text-sm text-slate-400">Classification:</p>
-              <Badge variant="outline" className={`
-                ${data.classification === 'malicious' ? 'bg-red-500/20 text-red-400' : 
-                  data.classification === 'benign' ? 'bg-emerald-500/20 text-emerald-400' : 
-                  'bg-slate-500/20 text-slate-400'}
-              `}>
-                {data.classification || 'Unknown'}
+          <div className="space-y-2">
+            {data.classification && (
+              <Badge variant="outline" className="bg-slate-700/50 text-slate-300 text-xs">
+                {data.classification}
               </Badge>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {data.noise && <Badge variant="outline" className="bg-amber-500/20 text-amber-400">Internet Noise</Badge>}
-              {data.riot && <Badge variant="outline" className="bg-cyan-500/20 text-cyan-400">RIOT</Badge>}
-            </div>
-            {data.name && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Tag className="w-4 h-4 text-slate-400" />
-                <span>Name: {data.name}</span>
-              </div>
             )}
-            {data.last_seen && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Clock className="w-4 h-4 text-slate-400" />
-                <span>Last Seen: {data.last_seen}</span>
+            <div className="text-sm space-y-1">
+              {data.name && <p className="text-slate-300">{data.name}</p>}
+              <div className="flex gap-2 text-xs">
+                {data.noise !== undefined && (
+                  <span className={data.noise ? 'text-orange-400' : 'text-emerald-400'}>
+                    {data.noise ? '⚠ Known Scanner' : '✓ Not Scanner'}
+                  </span>
+                )}
+                {data.riot !== undefined && (
+                  <span className={data.riot ? 'text-blue-400' : 'text-slate-400'}>
+                    {data.riot ? '✓ Trusted' : ''}
+                  </span>
+                )}
               </div>
-            )}
+            </div>
           </div>
         );
         
       case 'AlienVault OTX':
         return (
-          <div className="space-y-3">
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <p className="text-xs text-slate-400 mb-1">Threat Pulses</p>
-              <p className={`text-2xl font-bold ${(data.pulse_count || 0) > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                {data.pulse_count || 0}
-              </p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-semibold text-slate-200">
+                {data.pulse_count || 0} Threat Pulses
+              </span>
             </div>
             {data.pulses && data.pulses.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-slate-400">Recent Pulses:</p>
+              <div className="space-y-1">
                 {data.pulses.slice(0, 3).map((pulse, idx) => (
-                  <div key={idx} className="bg-slate-800/30 rounded p-2 text-xs text-slate-300">
-                    {pulse.name || 'Unnamed Pulse'}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-        
-      case 'URLScan':
-        const latest = data.latest_scan;
-        return (
-          <div className="space-y-3">
-            <div className="bg-slate-800/50 rounded-lg p-3">
-              <p className="text-xs text-slate-400 mb-1">Total Scan Results</p>
-              <p className="text-2xl font-bold text-slate-200">{data.total_results || 0}</p>
-            </div>
-            {latest && (
-              <>
-                {latest.domain && (
-                  <div className="flex items-center gap-2 text-sm text-slate-300">
-                    <Globe className="w-4 h-4 text-slate-400" />
-                    <span>Domain: {latest.domain}</span>
-                  </div>
-                )}
-                {latest.ip && (
-                  <div className="flex items-center gap-2 text-sm text-slate-300">
-                    <Server className="w-4 h-4 text-slate-400" />
-                    <span>IP: {latest.ip}</span>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        );
-      
-      case 'Shodan':
-        return (
-          <div className="space-y-3">
-            {data.ports && data.ports.length > 0 && (
-              <div>
-                <p className="text-xs text-slate-400 mb-2">Open Ports ({data.ports.length})</p>
-                <div className="flex flex-wrap gap-1">
-                  {data.ports.slice(0, 12).map((port, idx) => (
-                    <Badge key={idx} variant="outline" className="bg-slate-700/50 text-slate-300 text-xs">
-                      {port}
-                    </Badge>
-                  ))}
-                  {data.ports.length > 12 && (
-                    <Badge variant="outline" className="bg-slate-700/50 text-slate-400 text-xs">
-                      +{data.ports.length - 12} more
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            )}
-            {data.vulns && data.vulns.length > 0 && (
-              <div>
-                <p className="text-xs text-red-400 mb-2">Vulnerabilities ({data.vulns.length})</p>
-                <div className="flex flex-wrap gap-1">
-                  {data.vulns.slice(0, 5).map((vuln, idx) => (
-                    <Badge key={idx} variant="outline" className="bg-red-500/20 text-red-400 text-xs">
-                      {vuln}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            {data.hostnames && data.hostnames.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Globe className="w-4 h-4 text-slate-400" />
-                <span className="truncate">{data.hostnames[0]}</span>
-              </div>
-            )}
-          </div>
-        );
-      
-      case 'IPInfo':
-        return (
-          <div className="space-y-3">
-            {data.city && data.country && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                <span>{data.city}, {data.region}, {data.country}</span>
-              </div>
-            )}
-            {data.org && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Building className="w-4 h-4 text-slate-400" />
-                <span>{data.org}</span>
-              </div>
-            )}
-            {data.hostname && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Globe className="w-4 h-4 text-slate-400" />
-                <span>{data.hostname}</span>
-              </div>
-            )}
-          </div>
-        );
-      
-      case 'MalwareBazaar':
-        return (
-          <div className="space-y-3">
-            {data.found ? (
-              <>
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                  <p className="text-xs text-red-400 mb-1">Known Malware</p>
-                  <p className="text-lg font-bold text-red-400">
-                    {data.signature || 'Unknown Signature'}
+                  <p key={idx} className="text-xs text-slate-400 truncate">
+                    • {pulse.name}
                   </p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-slate-800/50 rounded p-2">
-                    <p className="text-xs text-slate-400">File Type</p>
-                    <p className="text-sm text-slate-200">{data.file_type || 'N/A'}</p>
-                  </div>
-                  <div className="bg-slate-800/50 rounded p-2">
-                    <p className="text-xs text-slate-400">File Size</p>
-                    <p className="text-sm text-slate-200">{data.file_size ? `${Math.round(data.file_size / 1024)} KB` : 'N/A'}</p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-emerald-400">Hash not found in MalwareBazaar</p>
-            )}
-          </div>
-        );
-      
-      case 'WHOIS':
-        return (
-          <div className="space-y-3">
-            {/* Domain Registration Info */}
-            {(data.creation_date || data.expiration_date) && (
-              <div className="grid grid-cols-2 gap-2">
-                {data.creation_date && (
-                  <div className="bg-slate-800/50 rounded-lg p-2">
-                    <p className="text-xs text-slate-400 mb-1">Registered</p>
-                    <p className="text-sm font-medium text-emerald-400">{data.creation_date}</p>
-                  </div>
-                )}
-                {data.expiration_date && (
-                  <div className="bg-slate-800/50 rounded-lg p-2">
-                    <p className="text-xs text-slate-400 mb-1">Expires</p>
-                    <p className="text-sm font-medium text-amber-400">{data.expiration_date}</p>
-                  </div>
-                )}
-              </div>
-            )}
-            {data.registrar && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Building className="w-4 h-4 text-slate-400" />
-                <span>Registrar: {data.registrar}</span>
-              </div>
-            )}
-            {data.country && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                <span>{data.city ? `${data.city}, ` : ''}{data.country}</span>
-              </div>
-            )}
-            {data.isp && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Building className="w-4 h-4 text-slate-400" />
-                <span>ISP: {data.isp}</span>
-              </div>
-            )}
-            {data.org && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Network className="w-4 h-4 text-slate-400" />
-                <span>{data.org}</span>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {data.proxy && <Badge variant="outline" className="bg-amber-500/20 text-amber-400">Proxy</Badge>}
-              {data.hosting && <Badge variant="outline" className="bg-cyan-500/20 text-cyan-400">Hosting</Badge>}
-              {data.mobile && <Badge variant="outline" className="bg-purple-500/20 text-purple-400">Mobile</Badge>}
-            </div>
-            {data.name_servers && data.name_servers.length > 0 && (
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Name Servers</p>
-                <div className="flex flex-wrap gap-1">
-                  {data.name_servers.slice(0, 4).map((ns, idx) => (
-                    <Badge key={idx} variant="outline" className="bg-slate-700/50 text-slate-300 text-xs">
-                      {ns}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      
-      case 'MXToolbox':
-        return (
-          <div className="space-y-3">
-            {data.mx_records && data.mx_records.length > 0 && (
-              <div>
-                <p className="text-xs text-slate-400 mb-2">MX Records</p>
-                <div className="space-y-1">
-                  {data.mx_records.slice(0, 3).map((mx, idx) => (
-                    <div key={idx} className="bg-slate-800/50 rounded p-2 text-xs text-slate-300 flex justify-between">
-                      <span>{mx.host}</span>
-                      <Badge variant="outline" className="bg-slate-700/50 text-slate-400 text-xs">Priority: {mx.priority}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-slate-800/50 rounded p-2">
-                <p className="text-xs text-slate-400 mb-1">SPF</p>
-                <AuthBadge status={data.spf_record ? 'present' : 'missing'} />
-              </div>
-              <div className="bg-slate-800/50 rounded p-2">
-                <p className="text-xs text-slate-400 mb-1">DMARC</p>
-                <AuthBadge status={data.dmarc_record ? 'present' : 'missing'} />
-              </div>
-            </div>
-            {data.issues && data.issues.length > 0 && (
-              <div>
-                <p className="text-xs text-amber-400 mb-2">Issues Found</p>
-                {data.issues.map((issue, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-xs text-amber-300">
-                    <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                    <span>{issue}</span>
-                  </div>
                 ))}
-              </div>
-            )}
-          </div>
-        );
-      
-      case 'Email Domain':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-slate-300">
-              <AtSign className="w-4 h-4 text-slate-400" />
-              <span>{data.email}</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {data.disposable && <Badge variant="outline" className="bg-red-500/20 text-red-400">Disposable</Badge>}
-              {data.free_provider && <Badge variant="outline" className="bg-amber-500/20 text-amber-400">Free Provider</Badge>}
-              {data.business_domain && !data.free_provider && <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400">Business Domain</Badge>}
-            </div>
-            {data.suspicious_patterns && data.suspicious_patterns.length > 0 && (
-              <div>
-                <p className="text-xs text-amber-400 mb-2">Suspicious Patterns</p>
-                {data.suspicious_patterns.map((pattern, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-xs text-amber-300">
-                    <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                    <span>{pattern}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {data.domain_age && (
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Clock className="w-4 h-4 text-slate-400" />
-                <span>Created: {data.domain_age}</span>
               </div>
             )}
           </div>
         );
         
       default:
-        return <pre className="text-xs text-slate-400 overflow-auto">{JSON.stringify(data, null, 2)}</pre>;
+        return (
+          <div className="text-xs text-slate-400 space-y-1">
+            {Object.entries(data).slice(0, 5).map(([key, value]) => (
+              <div key={key}>
+                <span className="text-slate-500">{key}:</span>{' '}
+                <span className="text-slate-300">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+              </div>
+            ))}
+          </div>
+        );
     }
   };
   
   return (
-    <Card className="bg-gradient-to-br from-slate-800/60 via-slate-800/50 to-slate-900/60 border-slate-700/50 backdrop-blur-sm hover:border-cyan-500/30 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-cyan-500/10 group overflow-hidden" data-testid={`vendor-card-${vendor.toLowerCase().replace(/\s+/g, '-')}`}>
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 to-blue-500/0 group-hover:from-cyan-500/5 group-hover:to-blue-500/5 transition-all duration-300"></div>
-      <CardHeader className="pb-3 relative">
+    <Card className="bg-slate-800/40 border-slate-700/40 hover:border-slate-600/50 transition-all duration-200 shadow-sm hover:shadow-md">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold text-slate-200 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50"></span>
-            {vendor}
-          </CardTitle>
-          <div className="flex items-center gap-2">
+          <CardTitle className="text-sm font-medium text-slate-200">{vendor}</CardTitle>
+          <div className="flex items-center gap-1.5">
             <VendorStatusBadge status={status} />
             {vendorUrl && (
               <a
                 href={vendorUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 hover:bg-slate-700/50 rounded-xl transition-all duration-200 group/link"
-                title={`View ${ioc} on ${vendor}`}
+                className="p-1 hover:bg-slate-700/50 rounded transition-colors"
+                title={`View on ${vendor}`}
               >
-                <ExternalLink className="w-4 h-4 text-cyan-400 group-hover/link:text-cyan-300 transition-colors" />
+                <ExternalLink className="w-3.5 h-3.5 text-slate-400 hover:text-slate-300" />
               </a>
             )}
           </div>
         </div>
       </CardHeader>
-      <CardContent className="relative">
+      <CardContent>
         {renderVendorData()}
       </CardContent>
     </Card>
@@ -635,341 +335,85 @@ const AnalysisResults = ({ result }) => {
   const { ioc, ioc_type, category, summary, vendor_results, timestamp } = result;
   
   return (
-    <div className="space-y-8" data-testid="analysis-results">
-      {/* Modern Header Section with Gradient */}
-      <Card className="bg-gradient-to-br from-slate-800/70 via-slate-800/60 to-slate-900/70 border-slate-700/50 backdrop-blur-sm shadow-2xl overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5"></div>
-        <CardContent className="pt-8 relative">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="p-4 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-2xl shadow-lg ring-2 ring-cyan-500/30">
+    <div className="space-y-6" data-testid="analysis-results">
+      <Card className="bg-slate-800/40 border-slate-700/40">
+        <CardContent className="pt-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-slate-700/30 rounded-lg">
                 <IOCTypeIcon category={category} />
               </div>
               <div>
-                <p className="text-xs text-cyan-400 uppercase tracking-wider font-semibold mb-2">Analyzed IOC</p>
-                <p className="text-xl font-mono font-bold text-slate-100 break-all" data-testid="analyzed-ioc-value">{ioc}</p>
-                <div className="flex items-center gap-3 mt-2">
-                  <Badge variant="outline" className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 text-xs border-cyan-500/30 px-3 py-1">
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Analyzed IOC</p>
+                <p className="text-base font-mono text-slate-100 break-all" data-testid="analyzed-ioc-value">{ioc}</p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <Badge variant="outline" className="bg-slate-700/30 text-slate-300 text-xs border-slate-600">
                     {ioc_type.toUpperCase()}
                   </Badge>
-                  <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
+                  <span className="text-xs text-slate-500 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
                     {new Date(timestamp).toLocaleString()}
                   </span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <ThreatBadge level={summary.threat_level} />
               {summary.confidence > 0 && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <div className="px-4 py-2 bg-slate-700/50 rounded-xl border border-slate-600/50">
-                        <p className="text-xs text-slate-400 mb-0.5">Confidence</p>
-                        <p className="text-lg font-bold text-cyan-400">{summary.confidence}%</p>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Threat confidence score based on aggregated data</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <div className="px-3 py-2 bg-slate-700/30 rounded-lg">
+                  <p className="text-xs text-slate-400">Confidence</p>
+                  <p className="text-sm font-semibold text-slate-200">{summary.confidence}%</p>
+                </div>
               )}
             </div>
           </div>
         </CardContent>
       </Card>
       
-      {/* Modern Summary Section */}
-      <Card className="bg-gradient-to-br from-slate-800/70 via-slate-800/60 to-slate-900/70 border-slate-700/50 backdrop-blur-sm shadow-xl overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5"></div>
-        <CardHeader className="relative">
-          <CardTitle className="text-xl flex items-center gap-3 text-slate-100">
-            <div className="p-2 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
-              <Zap className="w-5 h-5 text-purple-400" />
-            </div>
-            Threat Intelligence Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 relative">
-          {/* Key Findings */}
-          {summary.key_findings && summary.key_findings.length > 0 && (
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Key Findings</p>
-              <ul className="space-y-2">
-                {summary.key_findings.map((finding, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
-                    <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                    {finding}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          
-          {/* Email Security */}
-          {summary.email_security && Object.keys(summary.email_security).length > 0 && (
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Email Security</p>
-              <div className="flex gap-4">
-                {summary.email_security.spf && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">SPF:</span>
-                    <AuthBadge status={summary.email_security.spf} />
-                  </div>
-                )}
-                {summary.email_security.dmarc && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">DMARC:</span>
-                    <AuthBadge status={summary.email_security.dmarc} />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {/* Open Ports */}
-          {summary.open_ports && summary.open_ports.length > 0 && (
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Open Ports</p>
-              <div className="flex flex-wrap gap-1">
-                {summary.open_ports.slice(0, 20).map((port, idx) => (
-                  <Badge key={idx} variant="outline" className="bg-slate-700/50 text-slate-300 text-xs">
-                    {port}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Vulnerabilities */}
-          {summary.vulnerabilities && summary.vulnerabilities.length > 0 && (
-            <div>
-              <p className="text-xs text-red-400 uppercase tracking-wider mb-2">Known Vulnerabilities</p>
-              <div className="flex flex-wrap gap-1">
-                {summary.vulnerabilities.slice(0, 10).map((vuln, idx) => (
-                  <Badge key={idx} variant="outline" className="bg-red-500/20 text-red-400 text-xs">
-                    {vuln}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Tags */}
-          {summary.tags && summary.tags.length > 0 && (
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Tags</p>
-              <div className="flex flex-wrap gap-2">
-                {summary.tags.map((tag, idx) => (
-                  <Badge key={idx} variant="outline" className="bg-slate-700/50 text-slate-300">
-                    <Tag className="w-3 h-3 mr-1" />
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Geolocation */}
-          {summary.geolocation && Object.keys(summary.geolocation).length > 0 && (
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Geolocation</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(summary.geolocation).map(([key, value]) => (
-                  <div key={key} className="bg-slate-800/50 rounded-lg p-2">
-                    <p className="text-xs text-slate-500 capitalize">{key.replace('_', ' ')}</p>
-                    <p className="text-sm text-slate-300 truncate">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Modern Vendor Results Section */}
-      <Card className="bg-gradient-to-br from-slate-800/70 via-slate-800/60 to-slate-900/70 border-slate-700/50 backdrop-blur-sm shadow-xl overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-cyan-500/5"></div>
-        <CardHeader className="relative">
-          <CardTitle className="text-xl flex items-center gap-3 text-slate-100">
-            <div className="p-2 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-xl">
-              <Shield className="w-5 h-5 text-emerald-400" />
-            </div>
-            Vendor Intelligence
-          </CardTitle>
-          <CardDescription className="text-slate-400 text-base mt-2">
-            {vendor_results.filter(r => r.status !== 'unsupported').length} active sources · {summary.successful_queries} successful queries
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="relative">
-          <div className="columns-1 md:columns-2 xl:columns-3 gap-5 space-y-5">
-            {vendor_results
-              .filter(result => result.status !== 'unsupported')
-              .map((result, idx) => (
-                <div key={idx} className="break-inside-avoid">
-                  <VendorCard result={result} ioc={ioc} iocType={ioc_type} category={category} />
-                </div>
-              ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-const EmailHeaderAnalyzer = () => {
-  const [headers, setHeaders] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  
-  const analyzeHeaders = async () => {
-    if (!headers.trim()) {
-      toast.error('Please paste email headers to analyze');
-      return;
-    }
-    
-    setIsLoading(true);
-    setResult(null);
-    
-    try {
-      const response = await axios.post(`${API}/analyze/email-headers`, { headers });
-      setResult(response.data.analysis);
-      toast.success('Email headers analyzed');
-    } catch (error) {
-      toast.error('Failed to analyze email headers');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  return (
-    <div className="space-y-6">
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardHeader>
-          <CardTitle className="text-slate-200 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-cyan-400" />
-            Email Header Analyzer
-          </CardTitle>
-          <CardDescription className="text-slate-400">
-            Paste raw email headers to analyze authentication and security indicators
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Textarea
-            value={headers}
-            onChange={(e) => setHeaders(e.target.value)}
-            placeholder="Paste email headers here..."
-            className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-500 min-h-[200px] font-mono text-sm"
-            data-testid="email-headers-input"
-          />
-          <Button
-            onClick={analyzeHeaders}
-            disabled={isLoading || !headers.trim()}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
-            data-testid="analyze-headers-button"
-          >
-            {isLoading ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyzing...</>
-            ) : (
-              <><Search className="w-4 h-4 mr-2" />Analyze Headers</>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-      
-      {result && (
-        <Card className="bg-slate-800/50 border-slate-700/50">
+      {(summary.key_findings?.length > 0 || summary.open_ports?.length > 0 || summary.vulnerabilities?.length > 0) && (
+        <Card className="bg-slate-800/40 border-slate-700/40">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2 text-slate-200">
-              <Shield className="w-5 h-5 text-cyan-400" />
-              Analysis Results
+            <CardTitle className="text-base flex items-center gap-2 text-slate-200">
+              <TrendingUp className="w-4 h-4 text-slate-400" />
+              Intelligence Summary
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Basic Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {result.from && (
-                <div className="bg-slate-800/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">From</p>
-                  <p className="text-sm text-slate-200 break-all">{result.from}</p>
-                </div>
-              )}
-              {result.to && (
-                <div className="bg-slate-800/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">To</p>
-                  <p className="text-sm text-slate-200 break-all">{result.to}</p>
-                </div>
-              )}
-              {result.subject && (
-                <div className="bg-slate-800/50 rounded-lg p-3 md:col-span-2">
-                  <p className="text-xs text-slate-400 mb-1">Subject</p>
-                  <p className="text-sm text-slate-200">{result.subject}</p>
-                </div>
-              )}
-              {result.date && (
-                <div className="bg-slate-800/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Date</p>
-                  <p className="text-sm text-slate-200">{result.date}</p>
-                </div>
-              )}
-              {result.originating_ip && (
-                <div className="bg-slate-800/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Originating IP</p>
-                  <p className="text-sm text-slate-200 font-mono">{result.originating_ip}</p>
-                </div>
-              )}
-            </div>
-            
-            {/* Authentication */}
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Authentication Results</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-slate-800/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-2">SPF</p>
-                  <AuthBadge status={result.authentication?.spf} />
-                </div>
-                <div className="bg-slate-800/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-2">DKIM</p>
-                  <AuthBadge status={result.authentication?.dkim} />
-                </div>
-                <div className="bg-slate-800/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-2">DMARC</p>
-                  <AuthBadge status={result.authentication?.dmarc} />
-                </div>
-                <div className="bg-slate-800/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-2">ARC</p>
-                  <AuthBadge status={result.authentication?.arc} />
-                </div>
-              </div>
-            </div>
-            
-            {/* Warnings */}
-            {result.warnings && result.warnings.length > 0 && (
+          <CardContent className="space-y-4">
+            {summary.key_findings && summary.key_findings.length > 0 && (
               <div>
-                <p className="text-xs text-red-400 uppercase tracking-wider mb-3">Security Warnings</p>
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 space-y-2">
-                  {result.warnings.map((warning, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-sm text-red-300">
-                      <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      {warning}
-                    </div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Key Findings</p>
+                <ul className="space-y-1.5">
+                  {summary.key_findings.map((finding, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 mt-0.5 flex-shrink-0" />
+                      {finding}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {summary.open_ports && summary.open_ports.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Open Ports</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {summary.open_ports.slice(0, 15).map((port, idx) => (
+                    <Badge key={idx} variant="outline" className="bg-slate-700/30 text-slate-300 text-xs border-slate-600">
+                      {port}
+                    </Badge>
                   ))}
                 </div>
               </div>
             )}
             
-            {/* Received Chain */}
-            {result.received_chain && result.received_chain.length > 0 && (
+            {summary.vulnerabilities && summary.vulnerabilities.length > 0 && (
               <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Received Chain ({result.received_chain.length} hops)</p>
-                <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                  {result.received_chain.map((hop, idx) => (
-                    <div key={idx} className="bg-slate-800/50 rounded p-2 text-xs text-slate-300 font-mono">
-                      <span className="text-slate-500 mr-2">#{idx + 1}</span>
-                      {hop.substring(0, 150)}...
-                    </div>
+                <p className="text-xs text-red-400 uppercase tracking-wide mb-2">Vulnerabilities</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {summary.vulnerabilities.slice(0, 8).map((vuln, idx) => (
+                    <Badge key={idx} variant="outline" className="bg-red-500/10 text-red-400 text-xs border-red-500/30">
+                      {vuln}
+                    </Badge>
                   ))}
                 </div>
               </div>
@@ -977,6 +421,27 @@ const EmailHeaderAnalyzer = () => {
           </CardContent>
         </Card>
       )}
+      
+      <Card className="bg-slate-800/40 border-slate-700/40">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-slate-200">
+            <Shield className="w-4 h-4 text-slate-400" />
+            Vendor Intelligence
+          </CardTitle>
+          <CardDescription className="text-slate-500 text-sm">
+            {vendor_results.filter(r => r.status !== 'unsupported').length} active sources · {summary.successful_queries} successful
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {vendor_results
+              .filter(result => result.status !== 'unsupported')
+              .map((result, idx) => (
+                <VendorCard key={idx} result={result} ioc={ioc} iocType={ioc_type} category={category} />
+              ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -1040,159 +505,124 @@ const SOCDashboard = () => {
         toast.success('Analysis complete');
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || 'Failed to analyze IOC';
+      const errorMsg = error.response?.data?.detail || 'Failed to analyze IOC. Please check your input and try again.';
       toast.error(errorMsg);
+      console.error('Analysis error:', error);
     } finally {
       setIsLoading(false);
     }
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" data-testid="soc-dashboard">
+    <div className="min-h-screen bg-slate-950" data-testid="soc-dashboard">
       <Toaster position="top-right" theme="dark" richColors />
       
-      {/* Modern Header with Gradient */}
-      <header className="border-b border-slate-800/50 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl sticky top-0 z-50 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <header className="border-b border-slate-800 bg-slate-900/50 sticky top-0 z-50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-2xl shadow-lg ring-1 ring-cyan-500/30">
-                <Shield className="w-8 h-8 text-cyan-400" />
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-slate-800/50 rounded-lg">
+                <Shield className="w-5 h-5 text-slate-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  SOC IOC Analyzer
-                </h1>
-                <p className="text-sm text-slate-400 font-medium">Advanced Threat Intelligence Platform</p>
+                <h1 className="text-lg font-semibold text-slate-100">IOC Analyzer</h1>
+                <p className="text-xs text-slate-500">Threat Intelligence Platform</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-emerald-400 border-emerald-500/40 px-4 py-1.5 shadow-lg">
-                <span className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse shadow-lg shadow-emerald-400/50"></span>
-                Live
-              </Badge>
-            </div>
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-xs">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full mr-1.5"></span>
+              Active
+            </Badge>
           </div>
         </div>
       </header>
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Modern Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-10">
-          <TabsList className="bg-slate-800/50 border border-slate-700/50 p-1.5 rounded-2xl backdrop-blur-sm shadow-xl">
-            <TabsTrigger 
-              value="ioc" 
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600 data-[state=active]:text-white rounded-xl transition-all duration-300 data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/25"
-            >
-              <Search className="w-4 h-4 mr-2" />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+          <TabsList className="bg-slate-800/50 border border-slate-700/50">
+            <TabsTrigger value="ioc" className="data-[state=active]:bg-slate-700 data-[state=active]:text-slate-100 text-sm">
+              <Search className="w-3.5 h-3.5 mr-1.5" />
               IOC Analysis
             </TabsTrigger>
-            <TabsTrigger 
-              value="email-headers" 
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600 data-[state=active]:text-white rounded-xl transition-all duration-300 data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/25"
-            >
-              <FileText className="w-4 h-4 mr-2" />
+            <TabsTrigger value="email-headers" className="data-[state=active]:bg-slate-700 data-[state=active]:text-slate-100 text-sm">
+              <FileText className="w-3.5 h-3.5 mr-1.5" />
               Email Headers
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="ioc" className="mt-8">
-            {/* Modern Input Card with Glassmorphism */}
-            <Card className="bg-gradient-to-br from-slate-800/40 via-slate-800/50 to-slate-900/50 border-slate-700/50 backdrop-blur-xl shadow-2xl mb-10 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5"></div>
-              <CardHeader className="relative">
+          <TabsContent value="ioc" className="mt-6">
+            <Card className="bg-slate-800/40 border-slate-700/40 mb-6">
+              <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-slate-100 flex items-center gap-3 text-2xl">
-                      <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl">
-                        <Search className="w-6 h-6 text-cyan-400" />
-                      </div>
-                      IOC Analysis
-                    </CardTitle>
-                    <CardDescription className="text-slate-400 mt-2 text-base">
-                      Enter IP addresses, domains, URLs, emails, or file hashes for comprehensive threat analysis
-                    </CardDescription>
+                    <CardTitle className="text-base text-slate-100">Analyze Indicators</CardTitle>
+                    <CardDescription className="text-slate-500 text-sm">Enter IPs, domains, URLs, emails, or hashes</CardDescription>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant={bulkMode ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setBulkMode(!bulkMode)}
-                      className={bulkMode 
-                        ? "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-lg shadow-cyan-500/25 border-0" 
-                        : "border-slate-600 text-slate-300 hover:bg-slate-700/50 hover:border-cyan-500/50"}
-                      data-testid="bulk-mode-toggle"
-                    >
-                      {bulkMode ? <CheckCircle className="w-4 h-4 mr-2" /> : null}
-                      Bulk Mode
-                    </Button>
-                  </div>
+                  <Button
+                    variant={bulkMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setBulkMode(!bulkMode)}
+                    className={bulkMode ? "bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs" : "border-slate-600 text-slate-400 hover:bg-slate-800 text-xs"}
+                    data-testid="bulk-mode-toggle"
+                  >
+                    {bulkMode ? 'Single Mode' : 'Bulk Mode'}
+                  </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6 relative">
-                <div className="relative">
+              <CardContent className="space-y-4">
+                <div>
                   {bulkMode ? (
-                    <textarea
+                    <Textarea
                       value={iocInput}
                       onChange={handleInputChange}
-                      placeholder="Enter IOCs (one per line, max 20)...&#10;8.8.8.8&#10;example.com&#10;https://suspicious-site.com"
-                      className="w-full h-40 bg-slate-900/80 border-2 border-slate-700/50 hover:border-cyan-500/50 focus:border-cyan-500 rounded-2xl px-6 py-4 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 font-mono text-sm resize-none transition-all duration-300 shadow-inner"
+                      placeholder="Enter IOCs (one per line, max 20)...\n8.8.8.8\nexample.com\nhttps://suspicious-site.com"
+                      className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-slate-600 font-mono text-sm h-32 resize-none"
                       data-testid="ioc-input-bulk"
                     />
                   ) : (
-                    <div className="relative">
-                      <Input
-                        type="text"
-                        value={iocInput}
-                        onChange={handleInputChange}
-                        placeholder="Enter IOC (e.g., 8.8.8.8, google.com, user@example.com, hash...)"
-                        className="bg-slate-900/80 border-2 border-slate-700/50 hover:border-cyan-500/50 focus:border-cyan-500 text-slate-200 placeholder:text-slate-500 focus:ring-4 focus:ring-cyan-500/20 h-16 font-mono text-base rounded-2xl px-6 transition-all duration-300 shadow-inner"
-                        onKeyDown={(e) => e.key === 'Enter' && analyzeIOC()}
-                        data-testid="ioc-input"
-                      />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                        <Search className="w-5 h-5 text-slate-500" />
-                      </div>
-                    </div>
+                    <Input
+                      type="text"
+                      value={iocInput}
+                      onChange={handleInputChange}
+                      placeholder="Enter IOC (e.g., 8.8.8.8, google.com, user@example.com...)"
+                      className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-slate-600 h-11 font-mono text-sm"
+                      onKeyDown={(e) => e.key === 'Enter' && analyzeIOC()}
+                      data-testid="ioc-input"
+                    />
                   )}
                 </div>
                 
-                {/* Modern Detection Preview */}
                 {detectedType && !bulkMode && (
-                  <div className="flex items-center gap-4 p-5 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 rounded-2xl border border-cyan-500/20 backdrop-blur-sm shadow-lg" data-testid="detection-preview">
-                    <div className="p-3 bg-gradient-to-br from-cyan-500/30 to-blue-500/30 rounded-xl shadow-lg ring-2 ring-cyan-500/50">
-                      <IOCTypeIcon category={detectedType.category} />
+                  <div className="flex items-center gap-3 p-3 bg-slate-700/20 rounded-lg border border-slate-700/50" data-testid="detection-preview">
+                    <div className="p-2 bg-slate-700/40 rounded">
+                      <IOCTypeIcon category={detectedType.category} size="w-4 h-4" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs text-cyan-400 font-semibold uppercase tracking-wider mb-1">Detected Type</p>
-                      <p className="text-base font-bold text-slate-100">
-                        {detectedType.ioc_type.toUpperCase()} 
-                        <span className="text-slate-400 font-normal ml-2">({detectedType.category})</span>
+                      <p className="text-xs text-slate-400">Detected Type</p>
+                      <p className="text-sm text-slate-200">
+                        {detectedType.ioc_type.toUpperCase()} <span className="text-slate-500">({detectedType.category})</span>
                       </p>
                     </div>
-                    <div className="px-4 py-2 bg-emerald-500/20 rounded-xl border border-emerald-500/30">
-                      <CheckCircle className="w-5 h-5 text-emerald-400" />
-                    </div>
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
                   </div>
                 )}
                 
-                {/* Modern Action Buttons */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <Button
                     onClick={analyzeIOC}
                     disabled={isLoading || !iocInput.trim()}
-                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-6 text-base font-semibold rounded-2xl shadow-2xl shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border-0 flex-1"
+                    className="bg-slate-700 hover:bg-slate-600 text-slate-100 px-6 text-sm h-10 disabled:opacity-50"
                     data-testid="analyze-button"
                   >
                     {isLoading ? (
                       <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Analyzing...
                       </>
                     ) : (
                       <>
-                        <Search className="w-5 h-5 mr-2" />
-                        Analyze {bulkMode ? 'All IOCs' : 'IOC'}
+                        <Search className="w-4 h-4 mr-2" />
+                        Analyze
                       </>
                     )}
                   </Button>
@@ -1206,110 +636,48 @@ const SOCDashboard = () => {
                         setIocInput('');
                         setDetectedType(null);
                       }}
-                      className="border-2 border-slate-600 hover:border-red-500/50 text-slate-300 hover:text-red-400 hover:bg-red-500/10 px-6 py-6 rounded-2xl transition-all duration-300"
+                      className="border-slate-600 text-slate-400 hover:bg-slate-800 text-sm h-10"
                       data-testid="clear-button"
                     >
-                      <XCircle className="w-5 h-5 mr-2" />
-                      Clear Results
+                      Clear
                     </Button>
                   )}
                 </div>
               </CardContent>
             </Card>
             
-            {/* Results Section */}
             {analysisResult && <AnalysisResults result={analysisResult} />}
             
-            {/* Bulk Results */}
             {bulkResults.length > 0 && (
-              <div className="space-y-4" data-testid="bulk-results">
-                <h2 className="text-lg font-semibold text-slate-200">Bulk Analysis Results ({bulkResults.length})</h2>
-                <Accordion type="single" collapsible className="space-y-2">
-                  {bulkResults.map((result, idx) => (
-                    <AccordionItem 
-                      key={idx} 
-                      value={`item-${idx}`}
-                      className="bg-slate-800/50 border border-slate-700/50 rounded-lg overflow-hidden"
-                    >
-                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-slate-800/80">
-                        <div className="flex items-center gap-3 w-full">
-                          <IOCTypeIcon category={result.category} />
-                          <span className="font-mono text-sm text-slate-200 truncate flex-1 text-left">
-                            {result.ioc}
-                          </span>
-                          <ThreatBadge level={result.summary?.threat_level || 'unknown'} />
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <AnalysisResults result={result} />
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
-            )}
-            
-            {/* Empty State */}
-            {!analysisResult && bulkResults.length === 0 && !isLoading && (
-              <div className="text-center py-16" data-testid="empty-state">
-                <div className="inline-flex p-4 bg-slate-800/50 rounded-full mb-4">
-                  <Shield className="w-12 h-12 text-slate-600" />
-                </div>
-                <h3 className="text-lg font-medium text-slate-400 mb-2">Ready to Analyze</h3>
-                <p className="text-sm text-slate-500 max-w-md mx-auto">
-                  Enter an IOC above to query multiple threat intelligence sources and get consolidated security insights.
-                </p>
-                <div className="flex flex-wrap justify-center gap-2 mt-6">
-                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                    <Server className="w-3 h-3 mr-1" /> IP Addresses
-                  </Badge>
-                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                    <Globe className="w-3 h-3 mr-1" /> Domains
-                  </Badge>
-                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                    <Link2 className="w-3 h-3 mr-1" /> URLs
-                  </Badge>
-                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                    <Mail className="w-3 h-3 mr-1" /> Emails
-                  </Badge>
-                  <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
-                    <Hash className="w-3 h-3 mr-1" /> File Hashes
-                  </Badge>
-                </div>
+              <div className="space-y-4">
+                {bulkResults.map((result, idx) => (
+                  <div key={idx}>
+                    <AnalysisResults result={result} />
+                  </div>
+                ))}
               </div>
             )}
           </TabsContent>
           
           <TabsContent value="email-headers" className="mt-6">
-            <EmailHeaderAnalyzer />
+            <Card className="bg-slate-800/40 border-slate-700/40">
+              <CardHeader>
+                <CardTitle className="text-base text-slate-100">Email Header Analyzer</CardTitle>
+                <CardDescription className="text-slate-500 text-sm">Paste email headers for security analysis</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-slate-400">Email header analysis coming soon...</p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
-      
-      {/* Footer */}
-      <footer className="border-t border-slate-800 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <p>SOC IOC Analyzer v1.0</p>
-            <p>VirusTotal, AbuseIPDB, URLScan, AlienVault OTX, GreyNoise, Shodan, MalwareBazaar, MXToolbox</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
 
 function App() {
-  return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<SOCDashboard />} />
-          <Route path="*" element={<SOCDashboard />} />
-        </Routes>
-      </BrowserRouter>
-    </div>
-  );
+  return <SOCDashboard />;
 }
 
 export default App;
