@@ -375,7 +375,7 @@ async def detect_ioc_endpoint(request: IOCRequest):
 
 @app.post("/api/analyze")
 async def analyze_ioc_endpoint(request: IOCRequest):
-    ioc = request.ioc.strip()
+    ioc = normalize_ioc(request.ioc.strip())
     if not ioc: raise HTTPException(400, "IOC cannot be empty")
     ioc_type, category = detect_ioc_type(ioc)
     if category == 'unknown': raise HTTPException(400, f"Unable to determine IOC type: {ioc}")
