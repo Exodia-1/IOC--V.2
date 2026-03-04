@@ -275,6 +275,37 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
           </div>
         );
         
+      case 'MXToolbox':
+        return (
+          <div className="space-y-3">
+            {data.mx_records && data.mx_records.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 mb-1.5">MX Records</p>
+                <div className="space-y-1">
+                  {data.mx_records.slice(0, 5).map((mx, idx) => (
+                    <div key={idx} className="text-xs text-slate-300 flex items-center gap-2">
+                      <span className="text-slate-500">Priority {mx.priority}:</span>
+                      <span className="font-mono">{mx.host}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {data.spf_record && (
+              <div>
+                <p className="text-xs text-slate-400 mb-1">SPF Record</p>
+                <p className="text-xs text-slate-300 font-mono break-all">{data.spf_record}</p>
+              </div>
+            )}
+            {data.dmarc_record && (
+              <div>
+                <p className="text-xs text-slate-400 mb-1">DMARC Record</p>
+                <p className="text-xs text-slate-300 font-mono break-all">{data.dmarc_record}</p>
+              </div>
+            )}
+          </div>
+        );
+        
       default:
         return (
           <div className="text-xs text-slate-400 space-y-1">
