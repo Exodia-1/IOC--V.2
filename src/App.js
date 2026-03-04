@@ -433,6 +433,60 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
           </div>
         );
         
+      case 'IPInfo':
+        return (
+          <div className="space-y-2 text-xs">
+            {data.ip && (
+              <div>
+                <span className="text-slate-400">IP:</span>{' '}
+                <span className="text-slate-300 font-mono">{data.ip}</span>
+              </div>
+            )}
+            {data.city && (
+              <div>
+                <span className="text-slate-400">City:</span>{' '}
+                <span className="text-slate-300">{data.city}</span>
+              </div>
+            )}
+            {data.region && (
+              <div>
+                <span className="text-slate-400">Region:</span>{' '}
+                <span className="text-slate-300">{data.region}</span>
+              </div>
+            )}
+            {data.country && (
+              <div>
+                <span className="text-slate-400">Country:</span>{' '}
+                <span className="text-slate-300">{data.country}</span>
+              </div>
+            )}
+            {data.org && (
+              <div>
+                <span className="text-slate-400">Organization:</span>{' '}
+                <span className="text-slate-300">{data.org}</span>
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'MalwareBazaar':
+      case 'Email Domain':
+        return (
+          <div className="text-xs text-slate-400 space-y-1">
+            {Object.entries(data).slice(0, 6).map(([key, value]) => {
+              if (typeof value === 'object' && value !== null) {
+                return null;
+              }
+              return (
+                <div key={key}>
+                  <span className="text-slate-500 capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
+                  <span className="text-slate-300">{String(value)}</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+        
       default:
         return (
           <div className="text-xs text-slate-400 space-y-1">
