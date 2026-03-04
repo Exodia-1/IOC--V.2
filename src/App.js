@@ -789,19 +789,22 @@ const AnalysisResults = ({ result }) => {
         </CardContent>
       </Card>
       
-      {/* Vendor Results */}
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2 text-slate-200">
-            <Shield className="w-5 h-5 text-cyan-400" />
+      {/* Modern Vendor Results Section */}
+      <Card className="bg-gradient-to-br from-slate-800/70 via-slate-800/60 to-slate-900/70 border-slate-700/50 backdrop-blur-sm shadow-xl overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-cyan-500/5"></div>
+        <CardHeader className="relative">
+          <CardTitle className="text-xl flex items-center gap-3 text-slate-100">
+            <div className="p-2 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-xl">
+              <Shield className="w-5 h-5 text-emerald-400" />
+            </div>
             Vendor Intelligence
           </CardTitle>
-          <CardDescription className="text-slate-400">
-            {summary.successful_queries} of {summary.total_sources} sources returned data
+          <CardDescription className="text-slate-400 text-base mt-2">
+            {vendor_results.filter(r => r.status !== 'unsupported').length} active sources · {summary.successful_queries} successful queries
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="columns-1 md:columns-2 xl:columns-3 gap-4 space-y-4">
+        <CardContent className="relative">
+          <div className="columns-1 md:columns-2 xl:columns-3 gap-5 space-y-5">
             {vendor_results
               .filter(result => result.status !== 'unsupported')
               .map((result, idx) => (
