@@ -22,14 +22,9 @@ import {
   Info,
   AlertCircle,
   Clock,
-  MapPin,
-  Building,
-  Tag,
   ChevronRight,
   Zap,
-  Network,
   FileText,
-  AtSign,
   ShieldCheck,
   ShieldX,
   ShieldAlert,
@@ -37,7 +32,6 @@ import {
   TrendingUp
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "components/ui/tooltip";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "components/ui/accordion";
 import { Progress } from "components/ui/progress";
 
 const API = '/api';
