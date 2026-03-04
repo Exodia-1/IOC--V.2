@@ -126,11 +126,18 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-red-400/80">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <p>Unable to fetch data</p>
+            <p>Unable to retrieve data</p>
           </div>
-          {error && (
-            <p className="text-xs text-slate-500 ml-6">{error.substring(0, 100)}</p>
+          {error && error.length < 200 && (
+            <p className="text-xs text-slate-500">{error}</p>
           )}
+          <p className="text-xs text-slate-600 italic">
+            {vendor === 'VirusTotal' && 'Check API key configuration'}
+            {vendor === 'AbuseIPDB' && 'Verify API key in settings'}
+            {vendor === 'URLScan' && 'Check API key'}
+            {vendor === 'GreyNoise' && 'Verify API credentials'}
+            {vendor === 'AlienVault OTX' && 'Check API key'}
+          </p>
         </div>
       );
     }
