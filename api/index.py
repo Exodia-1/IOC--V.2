@@ -392,7 +392,7 @@ async def analyze_bulk_endpoint(request: BulkIOCRequest):
     results = []
     async with aiohttp.ClientSession() as session:
         for ioc in request.iocs:
-            ioc = ioc.strip()
+            ioc = normalize_ioc(ioc.strip())
             if not ioc: continue
             ioc_type, category = detect_ioc_type(ioc)
             if category == 'unknown': results.append({'ioc': ioc, 'error': 'Unknown type'}); continue
