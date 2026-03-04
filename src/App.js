@@ -123,9 +123,14 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
   const renderVendorData = () => {
     if (status === 'error') {
       return (
-        <div className="flex items-center gap-2 text-sm text-red-400/80">
-          <AlertCircle className="w-4 h-4" />
-          <p>{error || 'Failed to fetch data'}</p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-red-400/80">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <p>Unable to fetch data</p>
+          </div>
+          {error && (
+            <p className="text-xs text-slate-500 ml-6">{error.substring(0, 100)}</p>
+          )}
         </div>
       );
     }
@@ -133,7 +138,7 @@ const VendorCard = ({ result, ioc, iocType, category }) => {
     if (status !== 'success' || !data) {
       return (
         <p className="text-sm text-slate-500">
-          {error || (status === 'not_found' ? 'No data available for this IOC' : 'Data not available')}
+          {status === 'not_found' ? 'No data available for this IOC' : 'Data not available'}
         </p>
       );
     }
