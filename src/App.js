@@ -899,15 +899,145 @@ const SOCDashboard = () => {
           </TabsContent>
           
           <TabsContent value="email-headers" className="mt-6">
-            <Card className="bg-slate-800/40 border-slate-700/40">
+            <Card className="bg-slate-800/40 border-slate-700/40 mb-6">
               <CardHeader>
-                <CardTitle className="text-base text-slate-100">Email Header Analyzer</CardTitle>
-                <CardDescription className="text-slate-500 text-sm">Paste email headers for security analysis</CardDescription>
+                <CardTitle className="text-base text-slate-100 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-slate-400" />
+                  Email Header Analysis
+                </CardTitle>
+                <CardDescription className="text-slate-500 text-sm">
+                  Paste raw email headers for security analysis and threat detection
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-slate-400">Email header analysis coming soon...</p>
+              <CardContent className="space-y-4">
+                <Textarea
+                  value={emailHeaders}
+                  onChange={(e) => setEmailHeaders(e.target.value)}
+                  placeholder="Paste email headers here...&#10;&#10;Example:&#10;From: sender@example.com&#10;To: recipient@example.com&#10;Subject: Email Subject&#10;Received: from mail.example.com...&#10;X-Originating-IP: [192.168.1.1]"
+                  className="w-full bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-slate-600 font-mono text-xs h-48 resize-none py-3"
+                />
+                
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={analyzeEmailHeaders}
+                    disabled={isLoading || !emailHeaders.trim()}
+                    className="bg-slate-700 hover:bg-slate-600 text-slate-100 px-6 text-sm h-10 disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4 mr-2" />
+                        Analyze Headers
+                      </>
+                    )}
+                  </Button>
+                  
+                  {emailAnalysisResult && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEmailAnalysisResult(null);
+                        setEmailHeaders('');
+                      }}
+                      className="border-slate-600 text-slate-400 hover:bg-slate-800 text-sm h-10"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
+            
+            {emailAnalysisResult && (
+              <div className="space-y-6">
+                <Card className="bg-slate-800/40 border-slate-700/40">
+                  <CardHeader>
+                    <CardTitle className="text-base text-slate-100">Email Security Analysis</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {emailAnalysisResult.from && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-400 mb-1">From</p>
+                          <p className="text-sm text-slate-200 font-mono">{emailAnalysisResult.from}</p>
+                        </div>
+                        {emailAnalysisResult.to && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">To</p>
+                            <p className="text-sm text-slate-200 font-mono">{emailAnalysisResult.to}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {emailAnalysisResult.subject && (
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Subject</p>
+                        <p className="text-sm text-slate-200">{emailAnalysisResult.subject}</p>
+                      </div>
+                    )}
+                    
+                    {emailAnalysisResult.spf && (
+                      <div className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                        <div>
+                          <p className="text-xs text-slate-400">SPF</p>
+                          <Badge className={emailAnalysisResult.spf === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}>
+                            {emailAnalysisResult.spf}
+                          </Badge>
+                        </div>
+                        {emailAnalysisResult.dkim && (
+                          <div>
+                            <p className="text-xs text-slate-400">DKIM</p>
+                            <Badge className={emailAnalysisResult.dkim === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}>
+                              {emailAnalysisResult.dkim}
+                            </Badge>
+                          </div>
+                        )}
+                        {emailAnalysisResult.dmarc && (
+                          <div>
+                            <p className="text-xs text-slate-400">DMARC</p>
+                            <Badge className={emailAnalysisResult.dmarc === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}>
+                              {emailAnalysisResult.dmarc}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {emailAnalysisResult.security_issues && emailAnalysisResult.security_issues.length > 0 && (
+                      <div>
+                        <p className="text-xs text-red-400 uppercase tracking-wide mb-2">Security Issues</p>
+                        <div className="space-y-2">
+                          {emailAnalysisResult.security_issues.map((issue, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-sm text-red-400/80 bg-red-500/10 p-2 rounded">
+                              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                              <p>{issue}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {emailAnalysisResult.received_path && emailAnalysisResult.received_path.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Email Path</p>
+                        <div className="space-y-1">
+                          {emailAnalysisResult.received_path.map((hop, idx) => (
+                            <div key={idx} className="text-xs text-slate-300 font-mono pl-4 border-l-2 border-slate-700 py-1">
+                              {hop}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
