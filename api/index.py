@@ -175,8 +175,12 @@ async def query_virustotal(session, ioc, ioc_type, category):
                 return VendorResult(vendor='VirusTotal', status='success', data={'malicious_count': stats.get('malicious', 0), 'suspicious_count': stats.get('suspicious', 0), 'harmless_count': stats.get('harmless', 0), 'undetected_count': stats.get('undetected', 0), 'total_engines': total, 'country': attrs.get('country'), 'as_owner': attrs.get('as_owner')})
             elif resp.status == 404:
                 return VendorResult(vendor='VirusTotal', status='not_found')
-            elif resp.status == 401:
-                return VendorResult(vendor='VirusTotal', status='error', error='Invalid API key')
+            elif resp.status == 401 or resp.status == 403:
+                data = await resp.json()
+                error_code = data.get('error', {}).get('code', '')
+                if 'UserNotActiveError' in error_code:
+                    return VendorResult(vendor='VirusTotal', status='error', error='Account not activated. Please verify your VirusTotal account.')
+                return VendorResult(vendor='VirusTotal', status='error', error='Invalid or inactive API key')
             elif resp.status == 429:
                 return VendorResult(vendor='VirusTotal', status='error', error='Rate limit exceeded')
             else:
