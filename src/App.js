@@ -730,6 +730,28 @@ const SOCDashboard = () => {
     }
   };
   
+  const analyzeEmailHeaders = async () => {
+    if (!emailHeaders.trim()) {
+      toast.error('Please paste email headers to analyze');
+      return;
+    }
+    
+    setIsLoading(true);
+    setEmailAnalysisResult(null);
+    
+    try {
+      const response = await axios.post(`${API}/analyze_headers`, { headers: emailHeaders });
+      setEmailAnalysisResult(response.data);
+      toast.success('Email header analysis complete');
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || 'Failed to analyze email headers';
+      toast.error(errorMsg);
+      console.error('Email analysis error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-slate-950" data-testid="soc-dashboard">
       <Toaster position="top-right" theme="dark" richColors />
