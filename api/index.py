@@ -419,10 +419,196 @@ async def analyze_bulk_endpoint(request: BulkIOCRequest):
             await asyncio.sleep(0.3)
     return {'results': results, 'total': len(results)}
 
-@app.post("/api/analyze/email-headers")
+def parse_email_headers(headers_text: str) -> dict:
+    """World-class email header parser with advanced threat detection"""
+    import email
+    from email.parser import Parser
+    import re
+    from datetime import datetime
+    
+    try:
+        # Parse email headers
+        parser = Parser()
+        msg = parser.parsestr(headers_text)
+        
+        result = {
+            'basic_info': {},
+            'authentication': {},
+            'routing': {},
+            'security_analysis': {},
+            'threat_indicators': [],
+            'recommendations': []
+        }
+        
+        # Basic Information
+        result['basic_info']['from'] = msg.get('From', 'Not found')
+        result['basic_info']['to'] = msg.get('To', 'Not found')
+        result['basic_info']['subject'] = msg.get('Subject', 'Not found')
+        result['basic_info']['date'] = msg.get('Date', 'Not found')
+        result['basic_info']['message_id'] = msg.get('Message-ID', 'Not found')
+        result['basic_info']['reply_to'] = msg.get('Reply-To', 'Not specified')
+        
+        # Email Client Detection
+        user_agent = msg.get('User-Agent') or msg.get('X-Mailer', 'Unknown')
+        result['basic_info']['email_client'] = user_agent
+        
+        # Authentication Results
+        spf = msg.get('Received-SPF', '')
+        dkim = msg.get('DKIM-Signature', '')
+        dmarc = msg.get('Authentication-Results', '')
+        
+        result['authentication']['spf'] = 'pass' if 'pass' in spf.lower() else 'fail' if 'fail' in spf.lower() else 'none'
+        result['authentication']['dkim'] = 'pass' if dkim else 'none'
+        result['authentication']['dmarc'] = 'pass' if 'dmarc=pass' in dmarc.lower() else 'fail' if 'dmarc=fail' in dmarc.lower() else 'none'
+        result['authentication']['spf_details'] = spf[:200] if spf else 'No SPF record found'
+        result['authentication']['dkim_details'] = 'DKIM signature present' if dkim else 'No DKIM signature'
+        
+        # Extract IPs from Received headers
+        received_headers = msg.get_all('Received', [])
+        result['routing']['hop_count'] = len(received_headers)
+        result['routing']['email_path'] = []
+        sender_ips = []
+        
+        for received in received_headers:
+            # Extract IP addresses
+            ip_matches = re.findall(r'\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b', received)
+            if ip_matches:
+                sender_ips.extend(ip_matches)
+            result['routing']['email_path'].append(received[:150])
+        
+        result['routing']['sender_ips'] = list(set(sender_ips))
+        result['routing']['originating_ip'] = sender_ips[0] if sender_ips else 'Not found'
+        
+        # Security Analysis
+        security_score = 100
+        
+        # Check for spoofing indicators
+        from_addr = result['basic_info']['from']
+        reply_to = result['basic_info']['reply_to']
+        
+        if reply_to != 'Not specified' and from_addr != 'Not found':
+            from_domain = from_addr.split('@')[-1].strip('>')
+            reply_domain = reply_to.split('@')[-1].strip('>')
+            if from_domain.lower() != reply_domain.lower():
+                result['threat_indicators'].append({
+                    'severity': 'high',
+                    'type': 'Domain Mismatch',
+                    'description': f'From domain ({from_domain}) differs from Reply-To domain ({reply_domain})'
+                })
+                security_score -= 30
+        
+        # Check authentication failures
+        if result['authentication']['spf'] == 'fail':
+            result['threat_indicators'].append({
+                'severity': 'critical',
+                'type': 'SPF Failure',
+                'description': 'Email failed SPF authentication - sender may be spoofed'
+            })
+            security_score -= 40
+        
+        if result['authentication']['dmarc'] == 'fail':
+            result['threat_indicators'].append({
+                'severity': 'high',
+                'type': 'DMARC Failure',
+                'description': 'Email failed DMARC policy check'
+            })
+            security_score -= 25
+        
+        # Check for suspicious subject patterns
+        subject = result['basic_info']['subject'].lower()
+        suspicious_keywords = ['urgent', 'verify', 'suspended', 'action required', 'confirm', 'reset password', 'billing']
+        if any(keyword in subject for keyword in suspicious_keywords):
+            result['threat_indicators'].append({
+                'severity': 'medium',
+                'type': 'Suspicious Subject',
+                'description': 'Subject contains common phishing keywords'
+            })
+            security_score -= 15
+        
+        # Check for private/internal IPs (potential spoofing)
+        for ip in sender_ips:
+            if ip.startswith(('10.', '172.', '192.168.', '127.')):
+                result['threat_indicators'].append({
+                    'severity': 'medium',
+                    'type': 'Private IP Detected',
+                    'description': f'Email routed through private IP: {ip}'
+                })
+                security_score -= 10
+        
+        # Check hop count (too many hops = suspicious)
+        if result['routing']['hop_count'] > 10:
+            result['threat_indicators'].append({
+                'severity': 'low',
+                'type': 'Excessive Hops',
+                'description': f'Email passed through {result[\"routing\"][\"hop_count\"]} servers (suspicious routing)'
+            })
+            security_score -= 10
+        
+        # Check for missing Message-ID
+        if result['basic_info']['message_id'] == 'Not found':
+            result['threat_indicators'].append({
+                'severity': 'medium',
+                'type': 'Missing Message-ID',
+                'description': 'No Message-ID header (common in spam/phishing)'
+            })
+            security_score -= 15
+        
+        # Extract URLs from headers
+        urls = re.findall(r'https?://[^\\s<>\"]+', headers_text)
+        if urls:
+            result['security_analysis']['embedded_urls'] = list(set(urls))[:10]
+            # Check for URL shorteners
+            shorteners = ['bit.ly', 'tinyurl', 'goo.gl', 't.co', 'ow.ly']
+            if any(shortener in url for url in urls for shortener in shorteners):
+                result['threat_indicators'].append({
+                    'severity': 'medium',
+                    'type': 'URL Shortener Detected',
+                    'description': 'Email contains shortened URLs (common phishing tactic)'
+                })
+                security_score -= 15
+        
+        # Calculate final security score
+        result['security_analysis']['security_score'] = max(0, security_score)
+        result['security_analysis']['risk_level'] = (
+            'critical' if security_score < 40 else
+            'high' if security_score < 60 else
+            'medium' if security_score < 80 else
+            'low'
+        )
+        
+        # Generate recommendations
+        if result['authentication']['spf'] != 'pass':
+            result['recommendations'].append('Configure SPF records for sender domain')
+        if result['authentication']['dkim'] == 'none':
+            result['recommendations'].append('Enable DKIM signing for email authentication')
+        if result['authentication']['dmarc'] != 'pass':
+            result['recommendations'].append('Implement DMARC policy for domain protection')
+        if result['threat_indicators']:
+            result['recommendations'].append('Review threat indicators carefully before trusting this email')
+        if not result['recommendations']:
+            result['recommendations'].append('Email appears legitimate - all security checks passed')
+        
+        return result
+        
+    except Exception as e:
+        return {
+            'error': f'Failed to parse headers: {str(e)}',
+            'basic_info': {'from': 'Parse error', 'to': 'Parse error', 'subject': 'Parse error'},
+            'authentication': {'spf': 'error', 'dkim': 'error', 'dmarc': 'error'},
+            'routing': {'hop_count': 0, 'email_path': [], 'sender_ips': []},
+            'security_analysis': {'security_score': 0, 'risk_level': 'unknown'},
+            'threat_indicators': [],
+            'recommendations': ['Fix header format and try again']
+        }
+
+@app.post("/api/analyze_headers")
 async def analyze_headers_endpoint(request: EmailHeaderRequest):
     if not request.headers.strip(): raise HTTPException(400, "Headers cannot be empty")
-    return {'timestamp': datetime.now(timezone.utc).isoformat(), 'analysis': parse_email_headers(request.headers)}
+    analysis = parse_email_headers(request.headers)
+    return {
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'analysis': analysis
+    }
 
 @app.get("/api/health")
 async def health(): return {'status': 'healthy'}
